@@ -34,7 +34,15 @@ Giai đoạn 7C - Bắt đầu Spring Boot Backend
 
 Broker:
 
-EMQX
+EMQX chạy bằng Docker.
+
+Infrastructure:
+
+- EMQX MQTT broker
+- MQTT TCP port 1883
+- WebSocket port 8083
+- EMQX Dashboard port 18083
+- EMQX được quản lý chung bằng root Docker Compose
 
 Topics:
 

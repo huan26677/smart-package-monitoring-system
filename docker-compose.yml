@@ -1,5 +1,20 @@
 services:
 
+  emqx:
+
+    build:
+      context: ./emqx-docker
+
+    container_name: smart-package-emqx
+
+    restart: unless-stopped
+
+    ports:
+      - "1883:1883"
+      - "8083:8083"
+      - "18083:18083"
+
+
   postgres:
 
     image: postgres:17-alpine
