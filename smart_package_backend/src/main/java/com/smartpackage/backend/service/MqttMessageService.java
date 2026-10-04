@@ -18,8 +18,8 @@ public class MqttMessageService {
     private final MqttPersistenceService
         mqttPersistenceService;
 
-    private final WifiGeolocationService
-        wifiGeolocationService;
+    private final WifiAnchorService
+        wifiAnchorService;
 
     public MqttMessageService(
 
@@ -27,8 +27,8 @@ public class MqttMessageService {
 
         MqttPersistenceService
                 mqttPersistenceService,
-        WifiGeolocationService
-                wifiGeolocationService
+        WifiAnchorService
+                wifiAnchorService
 
      ) {
 
@@ -37,8 +37,8 @@ public class MqttMessageService {
 
         this.mqttPersistenceService =
                 mqttPersistenceService;
-        this.wifiGeolocationService =
-                wifiGeolocationService;
+        this.wifiAnchorService =
+                wifiAnchorService;
      }
 
 
@@ -292,13 +292,13 @@ public class MqttMessageService {
                         );
 
 
-        wifiGeolocationService
-                .resolveAndStore(
+                wifiAnchorService
+                        .resolveAndStore(
 
-                        locationScanId,
+                                locationScanId,
 
-                        data.wifiAccessPoints()
-                );
+                                data.wifiAccessPoints()
+                        );
 
         int accessPointCount = 0;
 

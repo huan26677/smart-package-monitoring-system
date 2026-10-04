@@ -79,8 +79,11 @@ Technology:
 - REST API lịch sử package event
 - REST API lịch sử location scan
 - REST API trả Wi-Fi access points theo location scan
-- Lưu latitude / longitude / accuracy vào location scan
-- Geolocation chạy bất đồng bộ
+- Wi-Fi Anchor geolocation hoàn toàn local
+- Không phụ thuộc Google Geolocation API
+- Lưu latitude / longitude / bán kính Anchor vào location scan
+- Lưu Anchor name, BSSID và RSSI đã match
+- REST API quản lý Wi-Fi Anchor `/api/wifi-locations`
 - REST API vị trí mới nhất `/api/devices/{deviceId}/location/latest`
 
 ## Database
@@ -88,7 +91,8 @@ Technology:
 PostgreSQL chạy bằng Docker.
 
 Đã hoàn thành:
-
+- JPA Entity `wifi_locations`
+- PostgreSQL lưu danh sách Wi-Fi Anchor
 - PostgreSQL container
 - Persistent Docker volume
 - Spring Boot kết nối PostgreSQL

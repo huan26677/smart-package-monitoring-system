@@ -15,6 +15,14 @@ public record DeviceLocationResponse(
 
         Double accuracyMeters,
 
+        String locationSource,
+
+        String locationLabel,
+
+        String matchedBssid,
+
+        Integer matchedRssi,
+
         long timestamp,
 
         Instant receivedAt

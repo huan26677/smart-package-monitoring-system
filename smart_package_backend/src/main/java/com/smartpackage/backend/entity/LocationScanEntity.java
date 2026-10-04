@@ -78,6 +78,32 @@ public class LocationScanEntity {
         )
         private String locationStatus;
 
+        @Column(
+                name = "location_source",
+                length = 32
+        )
+        private String locationSource;
+
+
+        @Column(
+                name = "location_label",
+                length = 120
+        )
+        private String locationLabel;
+
+
+        @Column(
+                name = "matched_bssid",
+                length = 17
+        )
+        private String matchedBssid;
+
+
+        @Column(
+                name = "matched_rssi"
+        )
+        private Integer matchedRssi;
+
     @OneToMany(
             mappedBy = "locationScan",
             cascade = CascadeType.ALL,
@@ -132,32 +158,73 @@ public class LocationScanEntity {
         );
     }
 
-        public void markLocated(
-                double latitude,
-                double longitude,
-                double accuracyMeters
-        ) {
+public void markAnchorMatched(
+
+        String label,
+
+        String bssid,
+
+        int rssi,
+
+        double latitude,
+
+        double longitude,
+
+        double radiusMeters
+
+) {
+
+    this.latitude =
+            latitude;
+
+    this.longitude =
+            longitude;
+
+    this.accuracyMeters =
+            radiusMeters;
+
+    this.locationStatus =
+            "ANCHOR_MATCHED";
+
+    this.locationSource =
+            "WIFI_ANCHOR";
+
+    this.locationLabel =
+            label;
+
+    this.matchedBssid =
+            bssid;
+
+    this.matchedRssi =
+            rssi;
+}
+
+
+        public void markNoAnchor() {
+
+        this.locationStatus =
+                "NO_ANCHOR";
+
+        this.locationSource =
+                "WIFI_ANCHOR";
+
+        this.locationLabel =
+                null;
+
+        this.matchedBssid =
+                null;
+
+        this.matchedRssi =
+                null;
 
         this.latitude =
-                latitude;
+                null;
 
         this.longitude =
-                longitude;
+                null;
 
         this.accuracyMeters =
-                accuracyMeters;
-
-        this.locationStatus =
-                "LOCATED";
-        }
-
-
-        public void markLocationStatus(
-                String status
-        ) {
-
-        this.locationStatus =
-                status;
+                null;
         }
 
     public Long getId() {
@@ -208,4 +275,26 @@ public class LocationScanEntity {
 
         return locationStatus;
         }       
+        public String getLocationSource() {
+
+        return locationSource;
+        }
+
+
+        public String getLocationLabel() {
+
+        return locationLabel;
+        }
+
+
+        public String getMatchedBssid() {
+
+        return matchedBssid;
+        }
+
+
+        public Integer getMatchedRssi() {
+
+        return matchedRssi;
+        }
 }       

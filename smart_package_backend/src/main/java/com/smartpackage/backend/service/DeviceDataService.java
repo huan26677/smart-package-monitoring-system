@@ -293,10 +293,18 @@ public class DeviceDataService {
 
                 scan.getAccuracyMeters(),
 
+                scan.getLocationSource(),
+
+                scan.getLocationLabel(),
+
+                scan.getMatchedBssid(),
+
+                scan.getMatchedRssi(),
+
                 scan.getScanTimestamp(),
 
                 scan.getReceivedAt()
-        );
+                );
         }
     /* =====================================================
      * HELPERS
@@ -481,6 +489,14 @@ public class DeviceDataService {
                 entity.getAccuracyMeters(),
 
                 entity.getLocationStatus(),
+
+                entity.getLocationSource(),
+
+                entity.getLocationLabel(),
+
+                entity.getMatchedBssid(),
+
+                entity.getMatchedRssi(),
 
                 aps
         );

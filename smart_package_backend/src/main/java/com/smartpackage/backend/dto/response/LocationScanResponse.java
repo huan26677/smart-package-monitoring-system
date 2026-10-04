@@ -22,6 +22,14 @@ public record LocationScanResponse(
 
         String locationStatus,
 
+        String locationSource,
+
+        String locationLabel,
+
+        String matchedBssid,
+
+        Integer matchedRssi,
+
         List<WifiAccessPointResponse>
                 wifiAccessPoints
 
