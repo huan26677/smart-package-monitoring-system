@@ -54,3 +54,13 @@ export function getDeviceDashboard(
     `/api/devices/${encodeURIComponent(deviceId)}/dashboard`
   );
 }
+
+export function getTelemetry(
+  deviceId,
+  limit = 60
+) {
+
+  return request(
+    `/api/devices/${encodeURIComponent(deviceId)}/telemetry?limit=${limit}`
+  );
+}

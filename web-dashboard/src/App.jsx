@@ -1,14 +1,22 @@
 import {
+  useCallback,
   useEffect,
   useState
 } from "react";
 
 import "./App.css";
 
+import TelemetryChart
+  from "./components/TelemetryChart";
+
 import {
   getDevices,
-  getDeviceDashboard
+  getDeviceDashboard,
+  getTelemetry
 } from "./services/api";
+
+const AUTO_REFRESH_MS =
+  3000;
 
 function App() {
 
@@ -31,10 +39,22 @@ function App() {
     useState(null);
 
   const [
+    telemetryHistory,
+    setTelemetryHistory
+  ] =
+    useState([]);
+
+  const [
     loading,
     setLoading
   ] =
     useState(true);
+
+  const [
+    refreshing,
+    setRefreshing
+  ] =
+    useState(false);
 
   const [
     error,
@@ -42,83 +62,131 @@ function App() {
   ] =
     useState("");
 
-  async function loadDevices() {
+  const loadDevices =
+    useCallback(
+      async () => {
 
-    try {
+        try {
 
-      const data =
-        await getDevices();
+          const data =
+            await getDevices();
 
-      setDevices(
-        data
-      );
+          setDevices(
+            data
+          );
 
-      if (
-        data.length > 0 &&
-        !selectedDeviceId
-      ) {
+          if (
+            data.length > 0
+          ) {
 
-        setSelectedDeviceId(
-          data[0].deviceId
-        );
-      }
+            setSelectedDeviceId(
+              (currentDeviceId) =>
+                currentDeviceId ||
+                data[0].deviceId
+            );
+          }
 
-    }
-    catch (err) {
+        }
+        catch (err) {
 
-      setError(
-        err.message
-      );
-    }
-  }
+          setError(
+            err.message
+          );
 
-  async function loadDashboard(
-    deviceId
-  ) {
+        }
+        finally {
 
-    if (!deviceId) {
+          setLoading(
+            false
+          );
+        }
+      },
+      []
+    );
 
-      return;
-    }
+  const loadDeviceData =
+    useCallback(
+      async (
+        deviceId,
+        background = false
+      ) => {
 
-    try {
+        if (!deviceId) {
 
-      setLoading(
-        true
-      );
+          return;
+        }
 
-      setError(
-        ""
-      );
+        if (background) {
 
-      const data =
-        await getDeviceDashboard(
-          deviceId
-        );
+          setRefreshing(
+            true
+          );
 
-      setDashboard(
-        data
-      );
+        }
+        else {
 
-    }
-    catch (err) {
+          setLoading(
+            true
+          );
+        }
 
-      setError(
-        err.message
-      );
+        try {
 
-      setDashboard(
-        null
-      );
+          const [
+            dashboardData,
+            telemetryData
+          ] =
+            await Promise.all([
 
-    }
-    finally {
+              getDeviceDashboard(
+                deviceId
+              ),
 
-      setLoading(
-        false
-      );
-    }
-  }
+              getTelemetry(
+                deviceId,
+                60
+              )
+            ]);
+
+          setDashboard(
+            dashboardData
+          );
+
+          setTelemetryHistory(
+            telemetryData
+          );
+
+          setError(
+            ""
+          );
+
+        }
+        catch (err) {
+
+          setError(
+            err.message
+          );
+
+        }
+        finally {
+
+          if (background) {
+
+            setRefreshing(
+              false
+            );
+
+          }
+          else {
+
+            setLoading(
+              false
+            );
+          }
+        }
+      },
+      []
+    );
 
   useEffect(
     () => {
@@ -126,21 +194,46 @@ function App() {
       loadDevices();
 
     },
-    []
+    [loadDevices]
   );
 
   useEffect(
     () => {
 
-      if (selectedDeviceId) {
+      if (!selectedDeviceId) {
 
-        loadDashboard(
-          selectedDeviceId
-        );
+        return;
       }
 
+      loadDeviceData(
+        selectedDeviceId
+      );
+
+      const intervalId =
+        window.setInterval(
+          () => {
+
+            loadDeviceData(
+              selectedDeviceId,
+              true
+            );
+
+          },
+          AUTO_REFRESH_MS
+        );
+
+      return () => {
+
+        window.clearInterval(
+          intervalId
+        );
+      };
+
     },
-    [selectedDeviceId]
+    [
+      selectedDeviceId,
+      loadDeviceData
+    ]
   );
 
   function formatNumber(
@@ -166,7 +259,7 @@ function App() {
   const telemetry =
     dashboard?.latestTelemetry;
 
-  const event =
+  const latestEvent =
     dashboard?.latestEvent;
 
   const location =
@@ -177,13 +270,25 @@ function App() {
 
       <header className="header">
 
-        <h1>
-          Smart Package Monitoring
-        </h1>
+        <div>
 
-        <p>
-          ESP32-S3 package monitoring dashboard
-        </p>
+          <h1>
+            Smart Package Monitoring
+          </h1>
+
+          <p>
+            ESP32-S3 package monitoring dashboard
+          </p>
+
+        </div>
+
+        <div className="header-refresh">
+
+          Auto refresh:
+          {" "}
+          {AUTO_REFRESH_MS / 1000}s
+
+        </div>
 
       </header>
 
@@ -209,7 +314,9 @@ function App() {
                     key={device.deviceId}
                     value={device.deviceId}
                   >
+
                     {device.deviceId}
+
                   </option>
 
                 )
@@ -221,13 +328,27 @@ function App() {
           <button
             onClick={
               () =>
-                loadDashboard(
+                loadDeviceData(
                   selectedDeviceId
                 )
             }
+            disabled={
+              !selectedDeviceId
+            }
           >
+
             Refresh
+
           </button>
+
+          {
+            refreshing && (
+
+              <span className="refreshing">
+                Updating...
+              </span>
+            )
+          }
 
           {
             dashboard && (
@@ -270,188 +391,248 @@ function App() {
 
           ) : dashboard ? (
 
-            <div className="grid">
+            <>
 
-              <section className="card">
+              <div className="grid">
 
-                <h2>
-                  Total G
-                </h2>
+                <section className="card">
 
-                <div className="value">
+                  <h2>
+                    Total G
+                  </h2>
+
+                  <div className="value">
+
+                    {
+                      formatNumber(
+                        telemetry?.gForce
+                      )
+                    } g
+
+                  </div>
+
+                  <div className="meta">
+
+                    State:
+                    {" "}
+                    {
+                      telemetry?.state ??
+                      "--"
+                    }
+
+                  </div>
+
+                </section>
+
+                <section className="card">
+
+                  <h2>
+                    Angle
+                  </h2>
+
+                  <div className="value">
+
+                    {
+                      formatNumber(
+                        telemetry?.angle
+                      )
+                    }°
+
+                  </div>
+
+                  <div className="meta">
+
+                    Vibration:
+                    {" "}
+                    {
+                      formatNumber(
+                        telemetry?.vibration,
+                        3
+                      )
+                    }
+
+                  </div>
+
+                </section>
+
+                <section className="card">
+
+                  <h2>
+                    Wi-Fi RSSI
+                  </h2>
+
+                  <div className="value">
+
+                    {
+                      telemetry?.wifiRssi ??
+                      "--"
+                    } dBm
+
+                  </div>
+
+                  <div className="meta">
+
+                    Last seen:
+                    {" "}
+                    {
+                      dashboard
+                        .secondsSinceLastSeen
+                    }s ago
+
+                  </div>
+
+                </section>
+
+                <section className="card">
+
+                  <h2>
+                    Latest Event
+                  </h2>
 
                   {
-                    formatNumber(
-                      telemetry?.gForce
+                    latestEvent ? (
+
+                      <>
+
+                        <div className="value">
+
+                          {
+                            latestEvent.type
+                          }
+
+                        </div>
+
+                        <div className="meta">
+
+                          Level:
+                          {" "}
+                          {
+                            latestEvent.level
+                          }
+
+                        </div>
+
+                        <div className="meta">
+
+                          G:
+                          {" "}
+                          {
+                            formatNumber(
+                              latestEvent.gForce
+                            )
+                          }
+
+                        </div>
+
+                      </>
+
+                    ) : (
+
+                      <div className="empty">
+                        No event
+                      </div>
                     )
-                  } g
-
-                </div>
-
-                <div className="meta">
-
-                  State:
-                  {" "}
-                  {
-                    telemetry?.state ??
-                    "--"
                   }
 
-                </div>
+                </section>
 
-              </section>
+                <section className="card">
 
-              <section className="card">
-
-                <h2>
-                  Angle
-                </h2>
-
-                <div className="value">
+                  <h2>
+                    Current Location
+                  </h2>
 
                   {
-                    formatNumber(
-                      telemetry?.angle
-                    )
-                  }°
+                    location ? (
 
-                </div>
+                      <>
 
-                <div className="meta">
+                        <div className="value">
 
-                  Vibration:
-                  {" "}
-                  {
-                    formatNumber(
-                      telemetry?.vibration,
-                      3
+                          {
+                            location
+                              .locationLabel ??
+                            "Unknown"
+                          }
+
+                        </div>
+
+                        <div className="meta">
+
+                          Status:
+                          {" "}
+                          {
+                            location
+                              .locationStatus ??
+                            "--"
+                          }
+
+                        </div>
+
+                        <div className="meta">
+
+                          Anchor RSSI:
+                          {" "}
+                          {
+                            location
+                              .matchedRssi ??
+                            "--"
+                          } dBm
+
+                        </div>
+
+                      </>
+
+                    ) : (
+
+                      <div className="empty">
+                        No location scan
+                      </div>
                     )
                   }
 
-                </div>
+                </section>
 
-              </section>
+              </div>
 
-              <section className="card">
+              <section className="card chart-card">
 
-                <h2>
-                  Wi-Fi
-                </h2>
+                <div className="section-heading">
 
-                <div className="value">
+                  <div>
 
-                  {
-                    telemetry?.wifiRssi ??
-                    "--"
-                  } dBm
+                    <h2>
+                      Telemetry History
+                    </h2>
 
-                </div>
-
-                <div className="meta">
-
-                  Last seen:
-                  {" "}
-                  {
-                    dashboard
-                      .secondsSinceLastSeen
-                  }s ago
-
-                </div>
-
-              </section>
-
-              <section className="card">
-
-                <h2>
-                  Latest Event
-                </h2>
-
-                {
-                  event ? (
-
-                    <>
-                      <div className="value">
-                        {event.type}
-                      </div>
-
-                      <div className="meta">
-                        Level:
-                        {" "}
-                        {event.level}
-                      </div>
-                    </>
-
-                  ) : (
-
-                    <div className="empty">
-                      No event
+                    <div className="meta">
+                      Latest 60 samples
                     </div>
-                  )
-                }
+
+                  </div>
+
+                </div>
+
+                <TelemetryChart
+                  data={
+                    telemetryHistory
+                  }
+                />
 
               </section>
 
-              <section className="card">
-
-                <h2>
-                  Current Location
-                </h2>
-
-                {
-                  location ? (
-
-                    <>
-                      <div className="value">
-
-                        {
-                          location
-                            .locationLabel ??
-                          "Unknown"
-                        }
-
-                      </div>
-
-                      <div className="meta">
-
-                        Status:
-                        {" "}
-                        {
-                          location
-                            .locationStatus ??
-                          "--"
-                        }
-
-                      </div>
-
-                      <div className="meta">
-
-                        RSSI:
-                        {" "}
-                        {
-                          location
-                            .matchedRssi ??
-                          "--"
-                        } dBm
-
-                      </div>
-                    </>
-
-                  ) : (
-
-                    <div className="empty">
-                      No location scan
-                    </div>
-                  )
-                }
-
-              </section>
-
-            </div>
+            </>
 
           ) : (
 
             <div className="empty">
-              No device data
+
+              {
+                devices.length === 0
+                  ? "No device found"
+                  : "No device data"
+              }
+
             </div>
           )
         }
