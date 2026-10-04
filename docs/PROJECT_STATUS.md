@@ -84,6 +84,14 @@ PostgreSQL chạy bằng Docker.
 - Spring Boot kết nối PostgreSQL
 - JDBC database health check
 - REST API `/api/health/database`
+- JPA Entity `devices`
+- JPA Entity `telemetry`
+- JPA Entity `package_events`
+- JPA Entity `location_scans`
+- JPA Entity `wifi_access_points`
+- Spring Data JPA Repository
+- Quan hệ khóa ngoại giữa Device, Telemetry, Event và Location Scan
+- Unique constraint `(device_id, event_id)` chống trùng event
 
 ## Mobile
 
@@ -95,4 +103,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 7C-4 - Thiết kế Entity và Repository cho Device, Telemetry, Event và Location Scan.
+Giai đoạn 7C-5 - Lưu MQTT Telemetry, Event và Location Scan vào PostgreSQL.
