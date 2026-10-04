@@ -13,7 +13,7 @@
 
 
 #define TOPIC_TELEMETRY \
-    "/" DEVICE_ID "/telemetry"
+    "smart-package/" DEVICE_ID "/telemetry"
 
 #define TOPIC_EVENT \
     "smart-package/" DEVICE_ID "/event"
