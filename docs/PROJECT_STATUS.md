@@ -92,7 +92,12 @@ PostgreSQL chạy bằng Docker.
 - Spring Data JPA Repository
 - Quan hệ khóa ngoại giữa Device, Telemetry, Event và Location Scan
 - Unique constraint `(device_id, event_id)` chống trùng event
-
+- Lưu MQTT telemetry vào PostgreSQL
+- Lưu MQTT event vào PostgreSQL
+- Lưu MQTT location scan vào PostgreSQL
+- Lưu Wi-Fi access points theo từng location scan
+- Tự động tạo/cập nhật Device theo `deviceId`
+- Chống lưu trùng event theo `(device_id, event_id)`
 ## Mobile
 
 Chưa làm.
@@ -103,4 +108,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 7C-5 - Lưu MQTT Telemetry, Event và Location Scan vào PostgreSQL.
+Giai đoạn 7C-6 - Xây dựng REST API đọc Device, Telemetry, Event và Location Scan từ PostgreSQL.
