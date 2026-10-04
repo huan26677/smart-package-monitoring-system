@@ -15,6 +15,8 @@ public record DeviceLocationResponse(
 
         Double accuracyMeters,
 
+        String locationStatus,
+
         String locationSource,
 
         String locationLabel,

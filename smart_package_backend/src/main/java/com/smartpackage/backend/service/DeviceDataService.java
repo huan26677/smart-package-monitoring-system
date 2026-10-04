@@ -269,14 +269,14 @@ public class DeviceDataService {
 
         LocationScanEntity scan =
                 locationScanRepository
-                        .findFirstByDevice_DeviceIdAndLatitudeIsNotNullAndLongitudeIsNotNullOrderByIdDesc(
+                        .findFirstByDevice_DeviceIdOrderByIdDesc(
                                 deviceId
                         )
                         .orElseThrow(
                                 () ->
                                         new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND,
-                                                "Location not found"
+                                                "Location scan not found"
                                         )
                         );
 
@@ -292,6 +292,8 @@ public class DeviceDataService {
                 scan.getLongitude(),
 
                 scan.getAccuracyMeters(),
+
+                scan.getLocationStatus(),
 
                 scan.getLocationSource(),
 

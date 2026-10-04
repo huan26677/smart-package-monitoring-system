@@ -17,8 +17,9 @@ public interface LocationScanRepository
                     String deviceId,
                     org.springframework.data.domain.Pageable pageable
             );
+
     java.util.Optional<LocationScanEntity>
-            findFirstByDevice_DeviceIdAndLatitudeIsNotNullAndLongitudeIsNotNullOrderByIdDesc(
+            findFirstByDevice_DeviceIdOrderByIdDesc(
                     String deviceId
             );
 }
