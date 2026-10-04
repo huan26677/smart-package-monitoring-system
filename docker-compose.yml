@@ -44,6 +44,51 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+
+    build:
+      context: ./smart_package_backend
+
+    container_name: smart-package-backend
+
+    restart: unless-stopped
+
+    depends_on:
+
+      postgres:
+        condition: service_healthy
+
+      emqx:
+        condition: service_started
+
+    environment:
+
+      DB_URL: "jdbc:postgresql://postgres:5432/${POSTGRES_DB}"
+
+      DB_USERNAME: "${POSTGRES_USER}"
+
+      DB_PASSWORD: "${POSTGRES_PASSWORD}"
+
+      MQTT_BROKER_URL: "tcp://emqx:1883"
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  web:
+
+    build:
+      context: ./web-dashboard
+
+    container_name: smart-package-web
+
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "127.0.0.1:8088:80"
+
 
 volumes:
 
