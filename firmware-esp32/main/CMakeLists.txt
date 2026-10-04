@@ -1,0 +1,30 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "mpu6050.c"
+        "impact_detector.c"
+        "event_log.c"
+        "lcd1602.c"
+        "buzzer.c"
+        "wifi_manager.c"
+        "mqtt_manager.c"
+        "app_config.c"
+        "setup_portal.c"
+        "time_manager.c"
+        "wifi_scanner.c"
+        
+    INCLUDE_DIRS
+        "."
+
+    REQUIRES
+        esp_driver_i2c
+        esp_driver_gpio
+        nvs_flash
+        esp_timer
+        esp_rom
+        esp_http_server
+        esp_wifi
+        esp_netif
+        esp_event
+        mqtt
+)
