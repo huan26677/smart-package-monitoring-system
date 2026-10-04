@@ -191,7 +191,22 @@ function App() {
   useEffect(
     () => {
 
-      loadDevices();
+      const timeoutId =
+        window.setTimeout(
+          () => {
+
+            loadDevices();
+
+          },
+          0
+        );
+
+      return () => {
+
+        window.clearTimeout(
+          timeoutId
+        );
+      };
 
     },
     [loadDevices]
@@ -205,9 +220,17 @@ function App() {
         return;
       }
 
-      loadDeviceData(
-        selectedDeviceId
-      );
+      const initialLoadTimeoutId =
+        window.setTimeout(
+          () => {
+
+            loadDeviceData(
+              selectedDeviceId
+            );
+
+          },
+          0
+        );
 
       const intervalId =
         window.setInterval(
@@ -223,6 +246,10 @@ function App() {
         );
 
       return () => {
+
+        window.clearTimeout(
+          initialLoadTimeoutId
+        );
 
         window.clearInterval(
           intervalId
