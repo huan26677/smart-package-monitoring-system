@@ -22,13 +22,6 @@ web-dashboard/.env.local
 
 
 # ==============================
-# Flutter - future
-# ==============================
-mobile-flutter/build/
-mobile-flutter/.dart_tool/
-
-
-# ==============================
 # IDE
 # ==============================
 .idea/

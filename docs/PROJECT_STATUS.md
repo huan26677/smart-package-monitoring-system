@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Giai đoạn 8B - Web Dashboard nâng cao
+Giai đoạn 8C - Hoàn thiện Web Dashboard đa thiết bị
 
 ## ESP32 Firmware
 
@@ -192,14 +192,6 @@ Technology:
 - Loại bỏ các điểm Anchor liên tiếp bị trùng trên đường lịch sử
 - Không đưa `NO_ANCHOR` vào tuyến vị trí
 
-## Mobile
-
-Chưa làm.
-
-Dự kiến:
-
-Flutter
-
 ## Next Step
 
-Giai đoạn 8C - Hoàn thiện Web Dashboard và chuẩn bị khởi tạo Flutter Mobile.
+Giai đoạn 8C-1 - Cho phép điện thoại truy cập Web Dashboard qua mạng LAN và hoàn thiện giao diện responsive.
