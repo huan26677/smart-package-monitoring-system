@@ -64,3 +64,13 @@ export function getTelemetry(
     `/api/devices/${encodeURIComponent(deviceId)}/telemetry?limit=${limit}`
   );
 }
+
+export function getEvents(
+  deviceId,
+  limit = 20
+) {
+
+  return request(
+    `/api/devices/${encodeURIComponent(deviceId)}/events?limit=${limit}`
+  );
+}

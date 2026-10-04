@@ -1,6 +1,5 @@
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -8,6 +7,79 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+
+function MetricChart({
+  title,
+  data,
+  dataKey,
+  unit
+}) {
+
+  return (
+    <div className="metric-chart">
+
+      <div className="metric-chart-title">
+        {title}
+      </div>
+
+      <ResponsiveContainer
+        width="100%"
+        height={240}
+      >
+
+        <LineChart
+          data={data}
+          margin={{
+            top: 10,
+            right: 15,
+            left: 0,
+            bottom: 5
+          }}
+        >
+
+          <CartesianGrid
+            strokeDasharray="3 3"
+          />
+
+          <XAxis
+            dataKey="time"
+            minTickGap={30}
+            tick={{
+              fontSize: 11
+            }}
+          />
+
+          <YAxis
+            width={55}
+            tick={{
+              fontSize: 11
+            }}
+          />
+
+          <Tooltip
+            formatter={
+              (value) => [
+                `${value} ${unit}`,
+                title
+              ]
+            }
+          />
+
+          <Line
+            type="monotone"
+            dataKey={dataKey}
+            name={title}
+            dot={false}
+            isAnimationActive={false}
+          />
+
+        </LineChart>
+
+      </ResponsiveContainer>
+
+    </div>
+  );
+}
 
 function TelemetryChart({
   data
@@ -31,8 +103,19 @@ function TelemetryChart({
       .map(
         (item, index) => ({
 
-          index:
-            index + 1,
+          time:
+            item.receivedAt
+              ? new Date(
+                  item.receivedAt
+                ).toLocaleTimeString(
+                  "vi-VN",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                  }
+                )
+              : `${index + 1}`,
 
           g:
             item.gForce,
@@ -46,71 +129,28 @@ function TelemetryChart({
       );
 
   return (
-    <div className="chart-wrapper">
+    <div className="telemetry-charts">
 
-      <ResponsiveContainer
-        width="100%"
-        height={320}
-      >
+      <MetricChart
+        title="Total G"
+        data={chartData}
+        dataKey="g"
+        unit="g"
+      />
 
-        <LineChart
-          data={chartData}
-          margin={{
-            top: 10,
-            right: 20,
-            left: 0,
-            bottom: 10
-          }}
-        >
+      <MetricChart
+        title="Angle"
+        data={chartData}
+        dataKey="angle"
+        unit="°"
+      />
 
-          <CartesianGrid
-            strokeDasharray="3 3"
-          />
-
-          <XAxis
-            dataKey="index"
-            tick={{
-              fontSize: 12
-            }}
-          />
-
-          <YAxis
-            tick={{
-              fontSize: 12
-            }}
-          />
-
-          <Tooltip />
-
-          <Legend />
-
-          <Line
-            type="monotone"
-            dataKey="g"
-            name="Total G"
-            dot={false}
-            isAnimationActive={false}
-          />
-
-          <Line
-            type="monotone"
-            dataKey="angle"
-            name="Angle"
-            dot={false}
-            isAnimationActive={false}
-          />
-
-          <Line
-            type="monotone"
-            dataKey="vibration"
-            name="Vibration"
-            dot={false}
-            isAnimationActive={false}
-          />
-
-        </LineChart>
-
-      </ResponsiveContainer>
+      <MetricChart
+        title="Vibration"
+        data={chartData}
+        dataKey="vibration"
+        unit=""
+      />
 
     </div>
   );

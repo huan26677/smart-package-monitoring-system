@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Giai đoạn 8A - Web Dashboard
+Giai đoạn 8B - Web Dashboard nâng cao
 
 ## ESP32 Firmware
 
@@ -157,6 +157,22 @@ Technology:
 - Xử lý loading state
 - Xử lý REST API error
 - Production build bằng Vite
+- Auto refresh Dashboard mỗi 3 giây
+- Background refresh không làm mất dữ liệu hiện tại
+- Đọc 60 telemetry gần nhất
+- Biểu đồ telemetry bằng Recharts
+- Hiển thị lịch sử Total G
+- Hiển thị lịch sử Angle
+- Hiển thị lịch sử Vibration
+- Responsive layout cho màn hình nhỏ
+- Tách biểu đồ Total G / Angle / Vibration thành 3 biểu đồ riêng
+- Hiển thị timestamp telemetry trên biểu đồ
+- REST API lịch sử Event được tích hợp vào Web
+- Bảng 20 package event gần nhất
+- Hiển thị Event Type / Level / G / Angle / Vibration
+- Banner cảnh báo theo trạng thái NORMAL / VIBRATION / TILT / FLIP / FREE_FALL / IMPACT / DROP
+- Hiển thị cảnh báo OFFLINE
+- Auto refresh cả telemetry và event history
 
 ## Mobile
 
@@ -168,4 +184,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 8B - Hoàn thiện giao diện Web Dashboard, tự động cập nhật dữ liệu và biểu đồ telemetry.
+Giai đoạn 8B-3 - Quản lý Wi-Fi Anchor và hiển thị vị trí kiện hàng trên bản đồ.

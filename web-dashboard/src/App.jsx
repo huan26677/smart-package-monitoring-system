@@ -6,17 +6,122 @@ import {
 
 import "./App.css";
 
+import EventTable
+  from "./components/EventTable";
+
 import TelemetryChart
   from "./components/TelemetryChart";
 
 import {
   getDevices,
   getDeviceDashboard,
+  getEvents,
   getTelemetry
 } from "./services/api";
 
 const AUTO_REFRESH_MS =
   3000;
+
+function getAlertInfo(
+  dashboard
+) {
+
+  if (!dashboard) {
+
+    return null;
+  }
+
+  if (!dashboard.online) {
+
+    return {
+      className: "alert-offline",
+      title: "DEVICE OFFLINE",
+      text:
+        "Không nhận được dữ liệu mới từ thiết bị."
+    };
+  }
+
+  const state =
+    dashboard
+      .latestTelemetry
+      ?.state ??
+    "UNKNOWN";
+
+  switch (state) {
+
+    case "DROP":
+
+      return {
+        className: "alert-danger",
+        title: "DROP DETECTED",
+        text:
+          "Phát hiện kiện hàng có dấu hiệu rơi."
+      };
+
+    case "IMPACT":
+
+      return {
+        className: "alert-danger",
+        title: "IMPACT DETECTED",
+        text:
+          "Phát hiện va đập kiện hàng."
+      };
+
+    case "FREE_FALL":
+
+      return {
+        className: "alert-danger",
+        title: "FREE FALL",
+        text:
+          "Thiết bị đang phát hiện trạng thái rơi tự do."
+      };
+
+    case "FLIP":
+
+      return {
+        className: "alert-warning",
+        title: "PACKAGE FLIPPED",
+        text:
+          "Kiện hàng đã bị lật."
+      };
+
+    case "TILT":
+
+      return {
+        className: "alert-warning",
+        title: "PACKAGE TILTED",
+        text:
+          "Kiện hàng đang bị nghiêng."
+      };
+
+    case "VIBRATION":
+
+      return {
+        className: "alert-warning",
+        title: "VIBRATION",
+        text:
+          "Phát hiện rung động bất thường."
+      };
+
+    case "NORMAL":
+
+      return {
+        className: "alert-safe",
+        title: "NORMAL",
+        text:
+          "Trạng thái kiện hàng bình thường."
+      };
+
+    default:
+
+      return {
+        className: "alert-unknown",
+        title: state,
+        text:
+          "Chưa xác định trạng thái kiện hàng."
+      };
+  }
+}
 
 function App() {
 
@@ -41,6 +146,12 @@ function App() {
   const [
     telemetryHistory,
     setTelemetryHistory
+  ] =
+    useState([]);
+
+  const [
+    eventHistory,
+    setEventHistory
   ] =
     useState([]);
 
@@ -134,7 +245,8 @@ function App() {
 
           const [
             dashboardData,
-            telemetryData
+            telemetryData,
+            eventsData
           ] =
             await Promise.all([
 
@@ -145,6 +257,11 @@ function App() {
               getTelemetry(
                 deviceId,
                 60
+              ),
+
+              getEvents(
+                deviceId,
+                20
               )
             ]);
 
@@ -154,6 +271,10 @@ function App() {
 
           setTelemetryHistory(
             telemetryData
+          );
+
+          setEventHistory(
+            eventsData
           );
 
           setError(
@@ -292,6 +413,11 @@ function App() {
   const location =
     dashboard?.latestLocation;
 
+  const alertInfo =
+    getAlertInfo(
+      dashboard
+    );
+
   return (
     <div className="dashboard">
 
@@ -419,6 +545,27 @@ function App() {
           ) : dashboard ? (
 
             <>
+
+              {
+                alertInfo && (
+
+                  <section
+                    className={
+                      `alert-banner ${alertInfo.className}`
+                    }
+                  >
+
+                    <div className="alert-title">
+                      {alertInfo.title}
+                    </div>
+
+                    <div className="alert-text">
+                      {alertInfo.text}
+                    </div>
+
+                  </section>
+                )
+              }
 
               <div className="grid">
 
@@ -643,6 +790,32 @@ function App() {
                 <TelemetryChart
                   data={
                     telemetryHistory
+                  }
+                />
+
+              </section>
+
+              <section className="card event-card">
+
+                <div className="section-heading">
+
+                  <div>
+
+                    <h2>
+                      Package Event History
+                    </h2>
+
+                    <div className="meta">
+                      Latest 20 events
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <EventTable
+                  events={
+                    eventHistory
                   }
                 />
 
