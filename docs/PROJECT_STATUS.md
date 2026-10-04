@@ -90,6 +90,13 @@ Technology:
 - Dashboard tổng hợp event mới nhất
 - Dashboard tổng hợp Wi-Fi Anchor location mới nhất
 - Xác định trạng thái thiết bị ONLINE/OFFLINE theo `lastSeenAt`
+- Global REST API exception handler
+- Chuẩn hóa JSON error response
+- Validation dữ liệu Wi-Fi Anchor
+- HTTP 400 cho request không hợp lệ
+- HTTP 404 cho resource không tồn tại
+- HTTP 204 khi xóa Wi-Fi Anchor thành công
+- CORS cho Web frontend trong môi trường local
 
 ## Database
 
@@ -127,4 +134,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 7C-9 - Chuẩn hóa REST API, xử lý lỗi và chuẩn bị backend cho Web/Flutter.
+Giai đoạn 7C-10 - Viết kiểm thử Backend và hoàn thiện cấu hình trước khi bắt đầu Web Dashboard.

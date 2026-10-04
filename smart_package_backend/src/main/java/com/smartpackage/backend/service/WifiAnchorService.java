@@ -3,8 +3,11 @@ package com.smartpackage.backend.service;
 import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.web.server.ResponseStatusException;
 
 import com.smartpackage.backend.dto.WifiAccessPointMessage;
 import com.smartpackage.backend.dto.request.WifiLocationRequest;
@@ -73,6 +76,7 @@ public class WifiAnchorService {
 
 
         if (
+                request.latitude() == null ||
                 request.latitude() < -90 ||
                 request.latitude() > 90
         ) {
@@ -84,6 +88,7 @@ public class WifiAnchorService {
 
 
         if (
+                request.longitude() == null ||
                 request.longitude() < -180 ||
                 request.longitude() > 180
         ) {
@@ -95,6 +100,7 @@ public class WifiAnchorService {
 
 
         double radius =
+                request.radiusMeters() != null &&
                 request.radiusMeters() > 0
                         ? request.radiusMeters()
                         : 30.0;
@@ -178,11 +184,29 @@ public class WifiAnchorService {
             String bssid
     ) {
 
+        String normalizedBssid =
+                normalizeBssid(
+                        bssid
+                );
+
+        if (
+                !wifiLocationRepository
+                        .existsById(
+                                normalizedBssid
+                        )
+        ) {
+
+            throw new ResponseStatusException(
+
+                    HttpStatus.NOT_FOUND,
+
+                    "Wi-Fi Anchor not found"
+            );
+        }
+
         wifiLocationRepository
                 .deleteById(
-                        normalizeBssid(
-                                bssid
-                        )
+                        normalizedBssid
                 );
     }
 
