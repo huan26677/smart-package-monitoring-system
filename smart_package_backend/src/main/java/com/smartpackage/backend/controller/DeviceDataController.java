@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartpackage.backend.dto.response.DeviceResponse;
+import com.smartpackage.backend.dto.response.DeviceDashboardResponse;
 import com.smartpackage.backend.dto.response.LocationScanResponse;
 import com.smartpackage.backend.dto.response.PackageEventResponse;
 import com.smartpackage.backend.dto.response.TelemetryResponse;
@@ -57,6 +58,28 @@ public class DeviceDataController {
 
         return deviceDataService
                 .getDevice(
+                        deviceId
+                );
+    }
+
+
+    /* =====================================================
+     * DASHBOARD
+     * ===================================================== */
+
+    @GetMapping(
+            "/{deviceId}/dashboard"
+    )
+    public DeviceDashboardResponse
+            getDashboard(
+
+                    @PathVariable
+                    String deviceId
+
+            ) {
+
+        return deviceDataService
+                .getDashboard(
                         deviceId
                 );
     }

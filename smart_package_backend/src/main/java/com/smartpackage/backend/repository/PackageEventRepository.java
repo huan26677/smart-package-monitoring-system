@@ -21,4 +21,9 @@ public interface PackageEventRepository
                         String deviceId,
                         org.springframework.data.domain.Pageable pageable
                 );
+
+        java.util.Optional<PackageEventEntity>
+                findFirstByDevice_DeviceIdOrderByIdDesc(
+                        String deviceId
+                );
 }

@@ -85,6 +85,11 @@ Technology:
 - Lưu Anchor name, BSSID và RSSI đã match
 - REST API quản lý Wi-Fi Anchor `/api/wifi-locations`
 - REST API vị trí mới nhất `/api/devices/{deviceId}/location/latest`
+- Dashboard API `/api/devices/{deviceId}/dashboard`
+- Dashboard tổng hợp telemetry mới nhất
+- Dashboard tổng hợp event mới nhất
+- Dashboard tổng hợp Wi-Fi Anchor location mới nhất
+- Xác định trạng thái thiết bị ONLINE/OFFLINE theo `lastSeenAt`
 
 ## Database
 
@@ -122,4 +127,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 7C-8 - Xây dựng Dashboard API tổng hợp trạng thái thiết bị, sự kiện và vị trí mới nhất.
+Giai đoạn 7C-9 - Chuẩn hóa REST API, xử lý lỗi và chuẩn bị backend cho Web/Flutter.

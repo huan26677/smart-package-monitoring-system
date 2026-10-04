@@ -1,6 +1,8 @@
 package com.smartpackage.backend.service;
 
 import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -8,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.smartpackage.backend.dto.response.DeviceDashboardResponse;
 import com.smartpackage.backend.dto.response.DeviceResponse;
 import com.smartpackage.backend.dto.response.LocationScanResponse;
 import com.smartpackage.backend.dto.response.PackageEventResponse;
@@ -28,6 +31,9 @@ import com.smartpackage.backend.dto.response.DeviceLocationResponse;
 @Service
 public class DeviceDataService {
 
+    private static final long
+            ONLINE_TIMEOUT_SECONDS =
+                    15;
 
     private final DeviceRepository
             deviceRepository;
@@ -281,33 +287,100 @@ public class DeviceDataService {
                         );
 
 
-        return new DeviceLocationResponse(
+        return toDeviceLocationResponse(
+                scan
+        );
+    }
+
+    /* =====================================================
+     * DASHBOARD
+     * ===================================================== */
+
+    @Transactional(readOnly = true)
+    public DeviceDashboardResponse
+            getDashboard(
+                    String deviceId
+            ) {
+
+        DeviceEntity device =
+                getDeviceEntity(
+                        deviceId
+                );
+
+        Instant now =
+                Instant.now();
+
+        long secondsSinceLastSeen =
+                Duration.between(
+                        device.getLastSeenAt(),
+                        now
+                )
+                .getSeconds();
+
+        if (secondsSinceLastSeen < 0) {
+
+            secondsSinceLastSeen =
+                    0;
+        }
+
+        boolean online =
+                secondsSinceLastSeen
+                        <= ONLINE_TIMEOUT_SECONDS;
+
+        TelemetryResponse latestTelemetry =
+                telemetryRepository
+                        .findFirstByDevice_DeviceIdOrderByIdDesc(
+                                deviceId
+                        )
+                        .map(
+                                this::toTelemetryResponse
+                        )
+                        .orElse(
+                                null
+                        );
+
+        PackageEventResponse latestEvent =
+                packageEventRepository
+                        .findFirstByDevice_DeviceIdOrderByIdDesc(
+                                deviceId
+                        )
+                        .map(
+                                this::toEventResponse
+                        )
+                        .orElse(
+                                null
+                        );
+
+        DeviceLocationResponse latestLocation =
+                locationScanRepository
+                        .findFirstByDevice_DeviceIdOrderByIdDesc(
+                                deviceId
+                        )
+                        .map(
+                                this::toDeviceLocationResponse
+                        )
+                        .orElse(
+                                null
+                        );
+
+        return new DeviceDashboardResponse(
 
                 deviceId,
 
-                scan.getId(),
+                online,
 
-                scan.getLatitude(),
+                secondsSinceLastSeen,
 
-                scan.getLongitude(),
+                device.getLastSeenAt(),
 
-                scan.getAccuracyMeters(),
+                latestTelemetry,
 
-                scan.getLocationStatus(),
+                latestEvent,
 
-                scan.getLocationSource(),
+                latestLocation
+        );
+    }
 
-                scan.getLocationLabel(),
-
-                scan.getMatchedBssid(),
-
-                scan.getMatchedRssi(),
-
-                scan.getScanTimestamp(),
-
-                scan.getReceivedAt()
-                );
-        }
     /* =====================================================
      * HELPERS
      * ===================================================== */
@@ -443,6 +516,42 @@ public class DeviceDataService {
                 entity.getEventTimestamp(),
 
                 entity.getTimeText(),
+
+                entity.getReceivedAt()
+        );
+    }
+
+
+    private DeviceLocationResponse
+            toDeviceLocationResponse(
+                    LocationScanEntity entity
+            ) {
+
+        return new DeviceLocationResponse(
+
+                entity
+                        .getDevice()
+                        .getDeviceId(),
+
+                entity.getId(),
+
+                entity.getLatitude(),
+
+                entity.getLongitude(),
+
+                entity.getAccuracyMeters(),
+
+                entity.getLocationStatus(),
+
+                entity.getLocationSource(),
+
+                entity.getLocationLabel(),
+
+                entity.getMatchedBssid(),
+
+                entity.getMatchedRssi(),
+
+                entity.getScanTimestamp(),
 
                 entity.getReceivedAt()
         );
