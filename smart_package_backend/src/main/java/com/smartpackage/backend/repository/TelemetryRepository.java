@@ -10,4 +10,17 @@ public interface TelemetryRepository
                 TelemetryEntity,
                 Long
         > {
+
+
+    java.util.Optional<TelemetryEntity>
+            findFirstByDevice_DeviceIdOrderByIdDesc(
+                    String deviceId
+            );
+
+
+    java.util.List<TelemetryEntity>
+            findByDevice_DeviceIdOrderByIdDesc(
+                    String deviceId,
+                    org.springframework.data.domain.Pageable pageable
+            );
 }

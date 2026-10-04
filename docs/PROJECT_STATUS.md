@@ -72,6 +72,13 @@ Technology:
 - Parse MQTT event JSON thành Java DTO
 - Parse MQTT location-scan JSON thành Java DTO
 - Tách MQTT parsing sang service layer
+- REST API danh sách Device
+- REST API chi tiết Device
+- REST API telemetry mới nhất
+- REST API lịch sử telemetry
+- REST API lịch sử package event
+- REST API lịch sử location scan
+- REST API trả Wi-Fi access points theo location scan
 
 ## Database
 
@@ -108,4 +115,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 7C-6 - Xây dựng REST API đọc Device, Telemetry, Event và Location Scan từ PostgreSQL.
+Giai đoạn 7C-7 - Chuẩn bị geolocation từ Wi-Fi BSSID/RSSI và API vị trí tương đối.

@@ -10,4 +10,11 @@ public interface LocationScanRepository
                 LocationScanEntity,
                 Long
         > {
+
+
+    java.util.List<LocationScanEntity>
+            findByDevice_DeviceIdOrderByIdDesc(
+                    String deviceId,
+                    org.springframework.data.domain.Pageable pageable
+            );
 }

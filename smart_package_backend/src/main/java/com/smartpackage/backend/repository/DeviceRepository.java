@@ -10,4 +10,8 @@ public interface DeviceRepository
                 DeviceEntity,
                 String
         > {
+
+
+    java.util.List<DeviceEntity>
+            findAllByOrderByDeviceIdAsc();
 }

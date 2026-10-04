@@ -11,9 +11,14 @@ public interface PackageEventRepository
                 Long
         > {
 
+        boolean existsByDevice_DeviceIdAndEventId(
+                String deviceId,
+                long eventId
+        );
 
-    boolean existsByDevice_DeviceIdAndEventId(
-            String deviceId,
-            long eventId
-    );
+        java.util.List<PackageEventEntity>
+                findByDevice_DeviceIdOrderByIdDesc(
+                        String deviceId,
+                        org.springframework.data.domain.Pageable pageable
+                );
 }
