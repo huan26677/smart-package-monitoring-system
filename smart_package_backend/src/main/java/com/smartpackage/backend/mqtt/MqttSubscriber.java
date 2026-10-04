@@ -1,5 +1,5 @@
 package com.smartpackage.backend.mqtt;
-
+import java.nio.charset.StandardCharsets;
 import jakarta.annotation.PreDestroy;
 
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
@@ -9,12 +9,15 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
+import com.smartpackage.backend.service.MqttMessageService;
 
 @Component
 public class MqttSubscriber
         implements MqttCallbackExtended {
 
+
+    private final MqttMessageService
+        mqttMessageService;
 
     private final String broker;
 
@@ -32,6 +35,9 @@ public class MqttSubscriber
 
     public MqttSubscriber(
 
+            MqttMessageService
+                mqttMessageService,
+
             @Value("${app.mqtt.broker}")
             String broker,
 
@@ -48,6 +54,9 @@ public class MqttSubscriber
             String locationTopic
 
     ) {
+
+        this.mqttMessageService =
+                mqttMessageService;
 
         this.broker =
                 broker;
@@ -244,9 +253,9 @@ public class MqttSubscriber
 
         String payload =
                 new String(
-                        message.getPayload()
+                        message.getPayload(),
+                        StandardCharsets.UTF_8
                 );
-
 
         System.out.println();
 
@@ -278,6 +287,10 @@ public class MqttSubscriber
                         + payload
         );
 
+        mqttMessageService.handle(
+                topic,
+                payload
+        );
 
         System.out.println(
                 "========================================"

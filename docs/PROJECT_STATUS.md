@@ -30,7 +30,10 @@ Giai đoạn 7C - Bắt đầu Spring Boot Backend
 - NTP timestamp
 - Wi-Fi BSSID/RSSI scan
 - MQTT location-scan
-
+- Parse MQTT telemetry JSON thành Java DTO
+- Parse MQTT event JSON thành Java DTO
+- Parse MQTT location-scan JSON thành Java DTO
+- Tách MQTT parsing sang service layer
 ## MQTT
 
 Broker:
@@ -80,4 +83,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 7C-2 - Parse MQTT JSON thành Java DTO và chuẩn bị lưu PostgreSQL.
+Giai đoạn 7C-3 - Khởi tạo PostgreSQL bằng Docker và kết nối Spring Boot.
