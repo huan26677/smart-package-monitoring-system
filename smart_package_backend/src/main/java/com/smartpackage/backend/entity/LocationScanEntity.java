@@ -54,6 +54,29 @@ public class LocationScanEntity {
     )
     private Instant receivedAt;
 
+        @Column(
+                name = "latitude"
+        )
+        private Double latitude;
+
+
+        @Column(
+                name = "longitude"
+        )
+        private Double longitude;
+
+
+        @Column(
+                name = "accuracy_meters"
+        )
+        private Double accuracyMeters;
+
+
+        @Column(
+                name = "location_status",
+                length = 32
+        )
+        private String locationStatus;
 
     @OneToMany(
             mappedBy = "locationScan",
@@ -79,8 +102,11 @@ public class LocationScanEntity {
 
         this.scanTimestamp =
                 scanTimestamp;
-    }
 
+        this.locationStatus =
+                "PENDING";
+    }
+        
 
     @PrePersist
     private void prePersist() {
@@ -106,6 +132,33 @@ public class LocationScanEntity {
         );
     }
 
+        public void markLocated(
+                double latitude,
+                double longitude,
+                double accuracyMeters
+        ) {
+
+        this.latitude =
+                latitude;
+
+        this.longitude =
+                longitude;
+
+        this.accuracyMeters =
+                accuracyMeters;
+
+        this.locationStatus =
+                "LOCATED";
+        }
+
+
+        public void markLocationStatus(
+                String status
+        ) {
+
+        this.locationStatus =
+                status;
+        }
 
     public Long getId() {
 
@@ -136,4 +189,23 @@ public class LocationScanEntity {
 
         return wifiAccessPoints;
     }
-}
+        public Double getLatitude() {
+
+        return latitude;
+        }
+
+        public Double getLongitude() {
+
+        return longitude;
+        }
+
+        public Double getAccuracyMeters() {
+
+        return accuracyMeters;
+        }
+
+        public String getLocationStatus() {
+
+        return locationStatus;
+        }       
+}       

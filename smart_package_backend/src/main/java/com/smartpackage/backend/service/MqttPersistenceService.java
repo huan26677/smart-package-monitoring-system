@@ -216,7 +216,7 @@ public class MqttPersistenceService {
      * ===================================================== */
 
     @Transactional
-    public void saveLocationScan(
+    public Long saveLocationScan(
             LocationScanMessage data
     ) {
 
@@ -263,8 +263,12 @@ public class MqttPersistenceService {
         }
 
 
-        locationScanRepository.save(
-                locationScan
-        );
+        LocationScanEntity saved =
+                locationScanRepository.save(
+                        locationScan
+                );
+
+
+        return saved.getId();
     }
 }

@@ -14,6 +14,14 @@ public record LocationScanResponse(
 
         Instant receivedAt,
 
+        Double latitude,
+
+        Double longitude,
+
+        Double accuracyMeters,
+
+        String locationStatus,
+
         List<WifiAccessPointResponse>
                 wifiAccessPoints
 

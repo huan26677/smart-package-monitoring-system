@@ -14,7 +14,7 @@ import com.smartpackage.backend.dto.response.PackageEventResponse;
 import com.smartpackage.backend.dto.response.TelemetryResponse;
 
 import com.smartpackage.backend.service.DeviceDataService;
-
+import com.smartpackage.backend.dto.response.DeviceLocationResponse;
 
 @RestController
 @RequestMapping("/api/devices")
@@ -162,4 +162,20 @@ public class DeviceDataController {
                         limit
                 );
     }
+        @GetMapping(
+                "/{deviceId}/location/latest"
+        )
+        public DeviceLocationResponse
+                getLatestLocation(
+
+                        @PathVariable
+                        String deviceId
+
+                ) {
+
+        return deviceDataService
+                .getLatestLocation(
+                        deviceId
+                );
+        }
 }

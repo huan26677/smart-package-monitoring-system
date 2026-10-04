@@ -79,6 +79,9 @@ Technology:
 - REST API lịch sử package event
 - REST API lịch sử location scan
 - REST API trả Wi-Fi access points theo location scan
+- Lưu latitude / longitude / accuracy vào location scan
+- Geolocation chạy bất đồng bộ
+- REST API vị trí mới nhất `/api/devices/{deviceId}/location/latest`
 
 ## Database
 
@@ -115,4 +118,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 7C-7 - Chuẩn bị geolocation từ Wi-Fi BSSID/RSSI và API vị trí tương đối.
+Giai đoạn 7C-8 - Xây dựng Dashboard API tổng hợp trạng thái thiết bị, sự kiện và vị trí mới nhất.

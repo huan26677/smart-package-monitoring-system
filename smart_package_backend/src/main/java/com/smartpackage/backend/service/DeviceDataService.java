@@ -23,7 +23,7 @@ import com.smartpackage.backend.repository.DeviceRepository;
 import com.smartpackage.backend.repository.LocationScanRepository;
 import com.smartpackage.backend.repository.PackageEventRepository;
 import com.smartpackage.backend.repository.TelemetryRepository;
-
+import com.smartpackage.backend.dto.response.DeviceLocationResponse;
 
 @Service
 public class DeviceDataService {
@@ -256,7 +256,48 @@ public class DeviceDataService {
                 .toList();
     }
 
+        @Transactional(readOnly = true)
+        public DeviceLocationResponse
+                getLatestLocation(
+                        String deviceId
+                ) {
 
+        ensureDeviceExists(
+                deviceId
+        );
+
+
+        LocationScanEntity scan =
+                locationScanRepository
+                        .findFirstByDevice_DeviceIdAndLatitudeIsNotNullAndLongitudeIsNotNullOrderByIdDesc(
+                                deviceId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Location not found"
+                                        )
+                        );
+
+
+        return new DeviceLocationResponse(
+
+                deviceId,
+
+                scan.getId(),
+
+                scan.getLatitude(),
+
+                scan.getLongitude(),
+
+                scan.getAccuracyMeters(),
+
+                scan.getScanTimestamp(),
+
+                scan.getReceivedAt()
+        );
+        }
     /* =====================================================
      * HELPERS
      * ===================================================== */
@@ -432,6 +473,14 @@ public class DeviceDataService {
                 entity.getScanTimestamp(),
 
                 entity.getReceivedAt(),
+
+                entity.getLatitude(),
+
+                entity.getLongitude(),
+
+                entity.getAccuracyMeters(),
+
+                entity.getLocationStatus(),
 
                 aps
         );

@@ -18,12 +18,17 @@ public class MqttMessageService {
     private final MqttPersistenceService
         mqttPersistenceService;
 
+    private final WifiGeolocationService
+        wifiGeolocationService;
+
     public MqttMessageService(
 
         JsonMapper jsonMapper,
 
         MqttPersistenceService
-                mqttPersistenceService
+                mqttPersistenceService,
+        WifiGeolocationService
+                wifiGeolocationService
 
      ) {
 
@@ -32,6 +37,8 @@ public class MqttMessageService {
 
         this.mqttPersistenceService =
                 mqttPersistenceService;
+        this.wifiGeolocationService =
+                wifiGeolocationService;
      }
 
 
@@ -278,9 +285,19 @@ public class MqttMessageService {
                         LocationScanMessage.class
                 );
 
-        mqttPersistenceService
-                .saveLocationScan(
-                        data
+        Long locationScanId =
+                mqttPersistenceService
+                        .saveLocationScan(
+                                data
+                        );
+
+
+        wifiGeolocationService
+                .resolveAndStore(
+
+                        locationScanId,
+
+                        data.wifiAccessPoints()
                 );
 
         int accessPointCount = 0;
