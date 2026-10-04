@@ -97,6 +97,14 @@ Technology:
 - HTTP 404 cho resource không tồn tại
 - HTTP 204 khi xóa Wi-Fi Anchor thành công
 - CORS cho Web frontend trong môi trường local
+- Unit test bằng JUnit 5
+- Mockito cho Service test
+- Test Wi-Fi Anchor matching
+- Test chọn Anchor theo RSSI mạnh nhất
+- Test Wi-Fi Anchor validation
+- Test Dashboard API service logic
+- Test chống trả vị trí Anchor cũ
+- Unit test không phụ thuộc PostgreSQL / EMQX / ESP32
 
 ## Database
 
@@ -134,4 +142,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 7C-10 - Viết kiểm thử Backend và hoàn thiện cấu hình trước khi bắt đầu Web Dashboard.
+Giai đoạn 8A - Khởi tạo Web Dashboard và kết nối với Spring Boot REST API.
