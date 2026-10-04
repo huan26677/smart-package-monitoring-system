@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Giai đoạn 7C - Bắt đầu Spring Boot Backend
+Giai đoạn 8A - Web Dashboard
 
 ## ESP32 Firmware
 
@@ -132,6 +132,32 @@ PostgreSQL chạy bằng Docker.
 - Lưu Wi-Fi access points theo từng location scan
 - Tự động tạo/cập nhật Device theo `deviceId`
 - Chống lưu trùng event theo `(device_id, event_id)`
+
+## Web Dashboard
+
+Technology:
+
+- React
+- Vite
+- JavaScript
+
+Đã hoàn thành:
+
+- Khởi tạo React Web Dashboard
+- Cấu hình Spring Boot REST API base URL
+- Đọc danh sách Device từ Backend
+- Đọc Dashboard API theo Device
+- Hiển thị ONLINE / OFFLINE
+- Hiển thị Total G
+- Hiển thị Angle
+- Hiển thị Vibration
+- Hiển thị Wi-Fi RSSI
+- Hiển thị Event mới nhất
+- Hiển thị Wi-Fi Anchor location
+- Xử lý loading state
+- Xử lý REST API error
+- Production build bằng Vite
+
 ## Mobile
 
 Chưa làm.
@@ -142,4 +168,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 8A - Khởi tạo Web Dashboard và kết nối với Spring Boot REST API.
+Giai đoạn 8B - Hoàn thiện giao diện Web Dashboard, tự động cập nhật dữ liệu và biểu đồ telemetry.

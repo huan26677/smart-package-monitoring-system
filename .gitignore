@@ -13,6 +13,15 @@ smart_package_backend/target/
 
 
 # ==============================
+# Web Dashboard / Node.js
+# ==============================
+web-dashboard/node_modules/
+web-dashboard/dist/
+web-dashboard/.env
+web-dashboard/.env.local
+
+
+# ==============================
 # Flutter - future
 # ==============================
 mobile-flutter/build/
