@@ -20,7 +20,7 @@ public class MqttMessageService {
 
     public MqttMessageService(
 
-        sonMapper jsonMapper,
+        JsonMapper jsonMapper,
 
         MqttPersistenceService
                 mqttPersistenceService
