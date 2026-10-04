@@ -324,6 +324,7 @@
 }
 
 .location-card,
+.location-history-card,
 .anchor-card {
   margin-top: 16px;
 }
@@ -445,6 +446,34 @@
 
 .anchor-table-wrapper {
   margin-top: 8px;
+}
+
+.location-status {
+  display: inline-block;
+
+  padding: 4px 9px;
+
+  border-radius: 999px;
+
+  background: #eceff4;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.location-matched {
+  background: #dff7e7;
+  color: #176b35;
+}
+
+.location-unknown {
+  background: #eceff4;
+  color: #596275;
+}
+
+.location-pending {
+  background: #fff0c7;
+  color: #805d00;
 }
 
 @media (

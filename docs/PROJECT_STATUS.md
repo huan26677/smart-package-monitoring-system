@@ -183,6 +183,14 @@ Technology:
 - Chọn BSSID từ Wi-Fi scan gần nhất của ESP32
 - Hỗ trợ lấy latitude / longitude từ Browser Geolocation
 - Không hiển thị vị trí giả khi trạng thái là `NO_ANCHOR`
+- Đọc 50 location scan gần nhất
+- Hiển thị bảng lịch sử vị trí
+- Hiển thị trạng thái `ANCHOR_MATCHED` / `NO_ANCHOR`
+- Hiển thị BSSID và RSSI của Anchor đã match
+- Hiển thị latitude / longitude lịch sử
+- Vẽ lịch sử di chuyển tương đối trên OpenStreetMap
+- Loại bỏ các điểm Anchor liên tiếp bị trùng trên đường lịch sử
+- Không đưa `NO_ANCHOR` vào tuyến vị trí
 
 ## Mobile
 
@@ -194,4 +202,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 8B-4 - Hoàn thiện lịch sử vị trí, giao diện quản lý Web và chuẩn bị chuyển sang Flutter Mobile.
+Giai đoạn 8C - Hoàn thiện Web Dashboard và chuẩn bị khởi tạo Flutter Mobile.

@@ -12,6 +12,9 @@ import EventTable
 import LocationMap
   from "./components/LocationMap";
 
+import LocationHistoryTable
+  from "./components/LocationHistoryTable";
+
 import TelemetryChart
   from "./components/TelemetryChart";
 
@@ -178,6 +181,12 @@ function App() {
     useState(null);
 
   const [
+    locationHistory,
+    setLocationHistory
+  ] =
+    useState([]);
+
+  const [
     anchorBusy,
     setAnchorBusy
   ] =
@@ -307,7 +316,7 @@ function App() {
 
               getLocationScans(
                 deviceId,
-                1
+                50
               )
             ]);
 
@@ -327,6 +336,10 @@ function App() {
 
             locationScansData[0] ??
             null
+          );
+
+          setLocationHistory(
+            locationScansData
           );
 
           setError(
@@ -1000,6 +1013,41 @@ function App() {
 
                   currentLocation={
                     location
+                  }
+
+                  locationHistory={
+                    locationHistory
+                  }
+
+                />
+
+              </section>
+
+              <section className="card location-history-card">
+
+                <div className="section-heading">
+
+                  <div>
+
+                    <h2>
+                      Location History
+                    </h2>
+
+                    <div className="meta">
+
+                      50 Wi-Fi location scans
+                      gần nhất.
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <LocationHistoryTable
+
+                  scans={
+                    locationHistory
                   }
 
                 />

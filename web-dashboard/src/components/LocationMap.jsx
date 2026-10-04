@@ -5,6 +5,7 @@ import {
 import {
   CircleMarker,
   MapContainer,
+  Polyline,
   Popup,
   TileLayer,
   useMap
@@ -35,6 +36,60 @@ function hasCoordinates(
       )
     )
   );
+}
+
+function buildHistoryPoints(
+  history
+) {
+
+  const scans =
+    [...(history || [])]
+      .reverse()
+      .filter(
+        (scan) =>
+          scan.locationStatus ===
+            "ANCHOR_MATCHED" &&
+          hasCoordinates(
+            scan
+          )
+      );
+
+  const result =
+    [];
+
+  let lastKey =
+    null;
+
+  for (
+    const scan of scans
+  ) {
+
+    const key =
+      `${scan.latitude},${scan.longitude}`;
+
+    if (
+      key === lastKey
+    ) {
+
+      continue;
+    }
+
+    result.push([
+
+      Number(
+        scan.latitude
+      ),
+
+      Number(
+        scan.longitude
+      )
+    ]);
+
+    lastKey =
+      key;
+  }
+
+  return result;
 }
 
 function MapAutoFit({
@@ -88,7 +143,8 @@ function MapAutoFit({
 
 function LocationMap({
   anchors,
-  currentLocation
+  currentLocation,
+  locationHistory
 }) {
 
   const validAnchors =
@@ -100,6 +156,11 @@ function LocationMap({
   const currentValid =
     hasCoordinates(
       currentLocation
+    );
+
+  const historyPoints =
+    buildHistoryPoints(
+      locationHistory
     );
 
   const points = [
@@ -130,7 +191,9 @@ function LocationMap({
             )
           ]]
         : []
-    )
+    ),
+
+    ...historyPoints
   ];
 
   if (
@@ -179,6 +242,25 @@ function LocationMap({
           points
         }
       />
+
+      {
+        historyPoints.length >= 2 && (
+
+          <Polyline
+
+            positions={
+              historyPoints
+            }
+
+            pathOptions={{
+              color: "#2563eb",
+              weight: 4,
+              opacity: 0.75
+            }}
+
+          />
+        )
+      }
 
       {
         validAnchors.map(
