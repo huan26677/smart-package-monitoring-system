@@ -9,14 +9,24 @@ import "./App.css";
 import EventTable
   from "./components/EventTable";
 
+import LocationMap
+  from "./components/LocationMap";
+
 import TelemetryChart
   from "./components/TelemetryChart";
 
+import WifiAnchorPanel
+  from "./components/WifiAnchorPanel";
+
 import {
+  deleteWifiLocation,
   getDevices,
   getDeviceDashboard,
   getEvents,
-  getTelemetry
+  getLocationScans,
+  getTelemetry,
+  getWifiLocations,
+  saveWifiLocation
 } from "./services/api";
 
 const AUTO_REFRESH_MS =
@@ -156,6 +166,24 @@ function App() {
     useState([]);
 
   const [
+    wifiAnchors,
+    setWifiAnchors
+  ] =
+    useState([]);
+
+  const [
+    latestLocationScan,
+    setLatestLocationScan
+  ] =
+    useState(null);
+
+  const [
+    anchorBusy,
+    setAnchorBusy
+  ] =
+    useState(false);
+
+  const [
     loading,
     setLoading
   ] =
@@ -179,21 +207,33 @@ function App() {
 
         try {
 
-          const data =
-            await getDevices();
+          const [
+            deviceData,
+            anchorData
+          ] =
+            await Promise.all([
+
+              getDevices(),
+
+              getWifiLocations()
+            ]);
 
           setDevices(
-            data
+            deviceData
+          );
+
+          setWifiAnchors(
+            anchorData
           );
 
           if (
-            data.length > 0
+            deviceData.length > 0
           ) {
 
             setSelectedDeviceId(
               (currentDeviceId) =>
                 currentDeviceId ||
-                data[0].deviceId
+                deviceData[0].deviceId
             );
           }
 
@@ -246,7 +286,8 @@ function App() {
           const [
             dashboardData,
             telemetryData,
-            eventsData
+            eventsData,
+            locationScansData
           ] =
             await Promise.all([
 
@@ -262,6 +303,11 @@ function App() {
               getEvents(
                 deviceId,
                 20
+              ),
+
+              getLocationScans(
+                deviceId,
+                1
               )
             ]);
 
@@ -275,6 +321,12 @@ function App() {
 
           setEventHistory(
             eventsData
+          );
+
+          setLatestLocationScan(
+
+            locationScansData[0] ??
+            null
           );
 
           setError(
@@ -307,6 +359,104 @@ function App() {
         }
       },
       []
+    );
+
+  const reloadAnchors =
+    useCallback(
+      async () => {
+
+        const data =
+          await getWifiLocations();
+
+        setWifiAnchors(
+          data
+        );
+      },
+      []
+    );
+
+  const handleSaveAnchor =
+    useCallback(
+      async (
+        anchor
+      ) => {
+
+        setAnchorBusy(
+          true
+        );
+
+        try {
+
+          await saveWifiLocation(
+            anchor
+          );
+
+          await reloadAnchors();
+
+          setError(
+            ""
+          );
+
+        }
+        catch (err) {
+
+          setError(
+            err.message
+          );
+
+          throw err;
+
+        }
+        finally {
+
+          setAnchorBusy(
+            false
+          );
+        }
+      },
+      [reloadAnchors]
+    );
+
+  const handleDeleteAnchor =
+    useCallback(
+      async (
+        bssid
+      ) => {
+
+        setAnchorBusy(
+          true
+        );
+
+        try {
+
+          await deleteWifiLocation(
+            bssid
+          );
+
+          await reloadAnchors();
+
+          setError(
+            ""
+          );
+
+        }
+        catch (err) {
+
+          setError(
+            err.message
+          );
+
+          throw err;
+
+        }
+        finally {
+
+          setAnchorBusy(
+            false
+          );
+        }
+      },
+      [reloadAnchors]
     );
 
   useEffect(
@@ -817,6 +967,90 @@ function App() {
                   events={
                     eventHistory
                   }
+                />
+
+              </section>
+
+              <section className="card location-card">
+
+                <div className="section-heading">
+
+                  <div>
+
+                    <h2>
+                      Package Location Map
+                    </h2>
+
+                    <div className="meta">
+
+                      Wi-Fi Anchor location,
+                      không phải GPS chính xác.
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <LocationMap
+
+                  anchors={
+                    wifiAnchors
+                  }
+
+                  currentLocation={
+                    location
+                  }
+
+                />
+
+              </section>
+
+              <section className="card anchor-card">
+
+                <div className="section-heading">
+
+                  <div>
+
+                    <h2>
+                      Wi-Fi Anchor Management
+                    </h2>
+
+                    <div className="meta">
+
+                      Đăng ký BSSID với
+                      tên khu vực và tọa độ.
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <WifiAnchorPanel
+
+                  anchors={
+                    wifiAnchors
+                  }
+
+                  wifiAccessPoints={
+                    latestLocationScan
+                      ?.wifiAccessPoints ??
+                    []
+                  }
+
+                  busy={
+                    anchorBusy
+                  }
+
+                  onSave={
+                    handleSaveAnchor
+                  }
+
+                  onDelete={
+                    handleDeleteAnchor
+                  }
+
                 />
 
               </section>

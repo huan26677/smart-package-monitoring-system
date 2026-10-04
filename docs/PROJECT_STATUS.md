@@ -173,6 +173,16 @@ Technology:
 - Banner cảnh báo theo trạng thái NORMAL / VIBRATION / TILT / FLIP / FREE_FALL / IMPACT / DROP
 - Hiển thị cảnh báo OFFLINE
 - Auto refresh cả telemetry và event history
+- Bản đồ vị trí bằng React Leaflet
+- OpenStreetMap base map
+- Hiển thị toàn bộ Wi-Fi Anchor trên bản đồ
+- Hiển thị vị trí tương đối hiện tại của kiện hàng
+- Quản lý danh sách Wi-Fi Anchor trên Web
+- Thêm / cập nhật Anchor bằng REST API
+- Xóa Anchor bằng REST API
+- Chọn BSSID từ Wi-Fi scan gần nhất của ESP32
+- Hỗ trợ lấy latitude / longitude từ Browser Geolocation
+- Không hiển thị vị trí giả khi trạng thái là `NO_ANCHOR`
 
 ## Mobile
 
@@ -184,4 +194,4 @@ Flutter
 
 ## Next Step
 
-Giai đoạn 8B-3 - Quản lý Wi-Fi Anchor và hiển thị vị trí kiện hàng trên bản đồ.
+Giai đoạn 8B-4 - Hoàn thiện lịch sử vị trí, giao diện quản lý Web và chuẩn bị chuyển sang Flutter Mobile.
