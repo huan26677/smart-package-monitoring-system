@@ -45,13 +45,22 @@ Topics:
 
 ## Backend
 
-Đang bắt đầu từ con số 0.
+Spring Boot backend đã khởi tạo và chạy thành công.
 
 Technology:
 
 - Java 17
-- Spring Boot
+- Spring Boot 4.1.1
 - Maven
+- Eclipse Paho MQTT
+
+Đã hoàn thành:
+
+- REST API `/api/health`
+- Kết nối EMQX
+- Subscribe MQTT telemetry
+- Subscribe MQTT event
+- Subscribe MQTT location-scan
 
 ## Database
 
@@ -71,4 +80,4 @@ Flutter
 
 ## Next Step
 
-Tạo Spring Boot Backend và kiểm tra REST API /api/health.
+Giai đoạn 7C-2 - Parse MQTT JSON thành Java DTO và chuẩn bị lưu PostgreSQL.
