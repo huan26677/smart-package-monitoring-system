@@ -15,14 +15,24 @@ public class MqttMessageService {
 
     private final JsonMapper jsonMapper;
 
+    private final MqttPersistenceService
+        mqttPersistenceService;
 
     public MqttMessageService(
-            JsonMapper jsonMapper
-    ) {
+
+        sonMapper jsonMapper,
+
+        MqttPersistenceService
+                mqttPersistenceService
+
+     ) {
 
         this.jsonMapper =
                 jsonMapper;
-    }
+
+        this.mqttPersistenceService =
+                mqttPersistenceService;
+     }
 
 
     /* =====================================================
@@ -118,6 +128,10 @@ public class MqttMessageService {
                         TelemetryMessage.class
                 );
 
+        mqttPersistenceService
+                .saveTelemetry(
+                        data
+                );
 
         System.out.println(
                 "[PARSED TELEMETRY]"
@@ -176,11 +190,24 @@ public class MqttMessageService {
                         PackageEventMessage.class
                 );
 
+        boolean eventSaved =
+                mqttPersistenceService
+                        .saveEvent(
+                                data
+                        );
 
         System.out.println(
                 "[PARSED EVENT]"
         );
 
+        System.out.println(
+                "Database  : "
+                        + (
+                                eventSaved
+                                        ? "SAVED"
+                                        : "DUPLICATE - SKIPPED"
+                        )
+        );
 
         System.out.println(
                 "Device    : "
@@ -251,6 +278,10 @@ public class MqttMessageService {
                         LocationScanMessage.class
                 );
 
+        mqttPersistenceService
+                .saveLocationScan(
+                        data
+                );
 
         int accessPointCount = 0;
 
