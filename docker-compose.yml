@@ -9,6 +9,13 @@ services:
 
     restart: unless-stopped
 
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18083/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
     ports:
       - "1883:1883"
       - "127.0.0.1:8083:8083"
@@ -59,7 +66,7 @@ services:
         condition: service_healthy
 
       emqx:
-        condition: service_started
+        condition: service_healthy
 
     environment:
 
@@ -74,6 +81,14 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
 
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/health/database && wget -q -O /dev/null http://127.0.0.1:8080/api/health/mqtt"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
   web:
 
     build:
@@ -84,7 +99,8 @@ services:
     restart: unless-stopped
 
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
     ports:
       - "127.0.0.1:8088:80"

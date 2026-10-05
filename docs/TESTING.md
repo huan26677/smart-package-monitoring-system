@@ -29,6 +29,18 @@ Kết quả mong đợi:
 - Errors: 0
 - BUILD SUCCESS
 
+### MQTT recovery tests
+
+`MqttSubscriberTests` kiểm tra kết nối thất bại lần đầu, kết nối lại và đăng ký lại topic sau khi mất kết nối, cùng việc thử lại khi đăng ký topic thất bại. Các test dùng MQTT client giả lập, không cần broker thật.
+
+Kiểm tra vận hành với broker thật:
+
+1. Chạy các dịch vụ theo [RUNNING.md](RUNNING.md).
+2. Xác nhận `/api/health/mqtt` trả HTTP 200 và thiết bị ESP32 cập nhật telemetry.
+3. Dừng EMQX bằng `docker compose stop emqx`: MQTT health phải trả HTTP 503, API database vẫn trả HTTP 200.
+4. Khởi động EMQX bằng `docker compose start emqx`: backend phải tự kết nối lại, đăng ký đủ 3 topic và nhận dữ liệu mới.
+5. Để kiểm tra lỗi lần kết nối đầu, dừng EMQX, khởi động lại backend, sau đó bật EMQX; backend phải phục hồi mà không cần khởi động lại lần nữa.
+
 ## Test Coverage
 
 ### WifiAnchorServiceTests

@@ -210,6 +210,8 @@ function App() {
   ] =
     useState("");
 
+  const [deviceListError, setDeviceListError] = useState("");
+
   const loadDevices =
     useCallback(
       async () => {
@@ -235,6 +237,8 @@ function App() {
             anchorData
           );
 
+          setDeviceListError("");
+
           if (
             deviceData.length > 0
           ) {
@@ -249,7 +253,7 @@ function App() {
         }
         catch (err) {
 
-          setError(
+          setDeviceListError(
             err.message
           );
 
@@ -485,11 +489,15 @@ function App() {
           0
         );
 
+      const intervalId = window.setInterval(loadDevices, AUTO_REFRESH_MS);
+
       return () => {
 
         window.clearTimeout(
           timeoutId
         );
+
+        window.clearInterval(intervalId);
       };
 
     },
@@ -690,10 +698,10 @@ function App() {
         </div>
 
         {
-          error && (
+          (error || deviceListError) && (
 
             <div className="error">
-              {error}
+              {error || deviceListError}
             </div>
           )
         }
