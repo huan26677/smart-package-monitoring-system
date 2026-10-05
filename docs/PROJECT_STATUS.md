@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Giai đoạn 8C - Hoàn thiện Web Dashboard đa thiết bị
+Giai đoạn 9 - Hoàn thiện, triển khai và kiểm thử hệ thống
 
 ## ESP32 Firmware
 
@@ -191,7 +191,33 @@ Technology:
 - Vẽ lịch sử di chuyển tương đối trên OpenStreetMap
 - Loại bỏ các điểm Anchor liên tiếp bị trùng trên đường lịch sử
 - Không đưa `NO_ANCHOR` vào tuyến vị trí
+- Responsive Web Dashboard cho desktop và điện thoại
+- Production build bằng Docker
+- Nginx phục vụ React production
+- Nginx reverse proxy `/api` sang Spring Boot
+- Cloudflare Tunnel chạy bằng Docker
+- Public Web Dashboard qua tên miền riêng
+- HTTPS public qua Cloudflare
+- Không cần port forwarding
+- Không cần public IP tĩnh
+
+## Deployment
+
+Đã hoàn thành:
+
+- Docker Compose quản lý toàn bộ infrastructure
+- EMQX health check
+- PostgreSQL health check
+- Spring Boot health check
+- Backend chỉ khởi động sau PostgreSQL và EMQX
+- Web chỉ khởi động sau Backend
+- Cloudflare Tunnel tự động restart
+- Public HTTPS domain
+- PostgreSQL chỉ expose localhost
+- Backend chỉ expose localhost
+- Web production chỉ expose localhost
+- MQTT port 1883 phục vụ ESP32 trong LAN
 
 ## Next Step
 
-Giai đoạn 8C-1 - Cho phép điện thoại truy cập Web Dashboard qua mạng LAN và hoàn thiện giao diện responsive.
+Giai đoạn 9A - Hoàn thiện tài liệu, backup dữ liệu và kiểm thử end-to-end trước khi demo.
