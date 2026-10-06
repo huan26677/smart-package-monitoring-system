@@ -10,6 +10,9 @@
 #include "mqtt_client.h"
 #include "cJSON.h"
 #include "esp_timer.h"
+#include "esp_crt_bundle.h"
+#include "network_config.h"
+#include "wifi_manager.h"
 #include <math.h>
 #include <stdatomic.h>
 #include "freertos/queue.h"
@@ -42,6 +45,8 @@ static esp_mqtt_client_handle_t
 
 static atomic_bool mqtt_connected =
     false;
+enum { MQTT_IDLE, MQTT_WAIT_WIFI, MQTT_CONNECTING, MQTT_ONLINE, MQTT_AUTH_FAILED, MQTT_TLS_FAILED, MQTT_NETWORK_FAILED };
+static atomic_int connection_state=MQTT_IDLE;
 
 static QueueHandle_t receipt_queue;
 static char receipt_payload[512];
@@ -256,6 +261,7 @@ static void mqtt_event_handler(
         case MQTT_EVENT_CONNECTED:
 
             mqtt_connected = true;
+            connection_state=MQTT_ONLINE;
             esp_mqtt_client_subscribe(mqtt_client, TOPIC_EVENT_ACK, 1);
             esp_mqtt_client_subscribe(mqtt_client, TOPIC_MOTION_ACK, 1);
             esp_mqtt_client_subscribe(mqtt_client, TOPIC_MOTION_CONTROL, 1);
@@ -279,6 +285,7 @@ static void mqtt_event_handler(
         case MQTT_EVENT_DISCONNECTED:
 
             mqtt_connected = false;
+            if(connection_state==MQTT_ONLINE) connection_state=MQTT_NETWORK_FAILED;
 
             ESP_LOGW(
                 TAG,
@@ -291,6 +298,18 @@ static void mqtt_event_handler(
         case MQTT_EVENT_ERROR:
 
             mqtt_connected = false;
+            connection_state=MQTT_NETWORK_FAILED;
+            if(event->error_handle) {
+                if(event->error_handle->error_type==MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
+                    connection_state=MQTT_AUTH_FAILED;
+                    ESP_LOGE(TAG,"MQTT tu choi ket noi, ma %d",event->error_handle->connect_return_code);
+                } else if(event->error_handle->error_type==MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+                    if(event->error_handle->esp_tls_cert_verify_flags) connection_state=MQTT_TLS_FAILED;
+                    ESP_LOGE(TAG,"Loi mang/TLS: esp=0x%x, tls=0x%x, verify=0x%x",
+                        event->error_handle->esp_tls_last_esp_err,event->error_handle->esp_tls_stack_err,
+                        event->error_handle->esp_tls_cert_verify_flags);
+                }
+            }
 
             ESP_LOGE(
                 TAG,
@@ -300,6 +319,9 @@ static void mqtt_event_handler(
             break;
 
 
+        case MQTT_EVENT_BEFORE_CONNECT:
+            connection_state=MQTT_CONNECTING;
+            break;
         default:
             break;
     }
@@ -310,24 +332,28 @@ static void mqtt_event_handler(
  * INIT
  * ========================================================= */
 
-esp_err_t mqtt_manager_init(
-    const char *broker_uri
-)
+static void start_when_wifi_ready(void *arg) {
+    (void)arg;
+    while(!wifi_manager_is_connected()) vTaskDelay(pdMS_TO_TICKS(500));
+    esp_err_t ret=esp_mqtt_client_start(mqtt_client);
+    if(ret!=ESP_OK) {connection_state=MQTT_NETWORK_FAILED;ESP_LOGE(TAG,"Khong bat duoc MQTT: %s",esp_err_to_name(ret));}
+    vTaskDelete(NULL);
+}
+
+esp_err_t mqtt_manager_init(const app_config_t *settings)
 {
     if (
-        broker_uri == NULL ||
-        strlen(broker_uri) == 0
+        settings == NULL ||
+        strlen(settings->mqtt_broker) == 0
     )
     {
         return ESP_ERR_INVALID_ARG;
     }
 
 
-    ESP_LOGI(
-        TAG,
-        "Broker: %s",
-        broker_uri
-    );
+    network_broker_t broker;
+    if(!network_parse_broker(settings->mqtt_broker,&broker) || broker.has_credentials) return ESP_ERR_INVALID_ARG;
+    ESP_LOGI(TAG,"MQTT: %s",broker.uri);
 
 
     receipt_queue = xQueueCreate(16, sizeof(uint32_t));
@@ -335,12 +361,37 @@ esp_err_t mqtt_manager_init(
 
     esp_mqtt_client_config_t config =
     {
-        .broker.address.uri =
-            broker_uri,
-        // A 200-sample motion frame must fit the output buffer. This also avoids
-        // fragmented-message state leaking into subsequent small publishes in IDF 5.5.
-        .buffer.size = 1024,
-        .buffer.out_size = 24576,
+        .broker =
+        {
+            .address =
+            {
+                .uri =
+                    broker.uri,
+            },
+
+            .verification =
+            {
+                .crt_bundle_attach =
+                    broker.tls ? esp_crt_bundle_attach : NULL,
+            },
+        },
+        .credentials = {
+            .client_id = DEVICE_ID,
+            .username = settings->mqtt_username[0] ? settings->mqtt_username : NULL,
+            .authentication.password = settings->mqtt_password[0] ? settings->mqtt_password : NULL,
+        },
+        .network = {.reconnect_timeout_ms=5000, .timeout_ms=15000},
+        .session = {.keepalive=30, .protocol_ver=MQTT_PROTOCOL_V_3_1_1},
+        .task = {.priority=2, .stack_size=6144},
+
+        .buffer =
+        {
+            .size =
+                1024,
+
+            .out_size =
+                24576,
+        },
     };
 
 
@@ -376,10 +427,8 @@ esp_err_t mqtt_manager_init(
     }
 
 
-    ret =
-        esp_mqtt_client_start(
-            mqtt_client
-        );
+    connection_state=MQTT_WAIT_WIFI;
+    ret=xTaskCreate(start_when_wifi_ready,"mqtt_start",3072,NULL,1,NULL)==pdPASS?ESP_OK:ESP_ERR_NO_MEM;
 
 
     if (ret != ESP_OK)
@@ -433,6 +482,18 @@ esp_err_t mqtt_manager_init(
 bool mqtt_manager_is_connected(void)
 {
     return mqtt_connected;
+}
+
+const char *mqtt_manager_status(void) {
+    if(connection_state==MQTT_IDLE) return "Chưa cấu hình";
+    if(!wifi_manager_is_connected()) return "Chờ mạng Wi-Fi";
+    switch(connection_state) {
+        case MQTT_ONLINE:return "Đã kết nối";
+        case MQTT_AUTH_FAILED:return "Tài khoản hoặc mật khẩu bị từ chối";
+        case MQTT_TLS_FAILED:return "Không xác thực được chứng chỉ máy chủ";
+        case MQTT_NETWORK_FAILED:return "Không kết nối được máy chủ";
+        default:return "Đang kết nối";
+    }
 }
 
 int mqtt_manager_publish_motion(const char *payload,int length,bool capture) {

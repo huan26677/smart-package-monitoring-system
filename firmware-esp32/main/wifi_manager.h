@@ -2,6 +2,7 @@
 #define WIFI_MANAGER_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include "esp_err.h"
 
 esp_err_t wifi_manager_init(

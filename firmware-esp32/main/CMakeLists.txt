@@ -10,6 +10,8 @@ idf_component_register(
         "wifi_manager.c"
         "mqtt_manager.c"
         "app_config.c"
+        "network_config.c"
+        "network_console.c"
         "setup_portal.c"
         "time_manager.c"
         "wifi_scanner.c"
@@ -28,5 +30,7 @@ idf_component_register(
         esp_netif
         esp_event
         mqtt
+        mbedtls
         json
+    EMBED_TXTFILES "setup_portal.html"
 )

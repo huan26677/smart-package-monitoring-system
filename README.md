@@ -85,6 +85,8 @@ Internet / HTTPS
 
 ## Main MQTT Topics
 
+Đổi Wi-Fi và MQTT khi mang ESP32 sang nơi khác: xem [hướng dẫn cấu hình mạng](docs/MOBILE_NETWORK.md). Thiết bị dùng WSS qua Cloudflare và trang cấu hình tiếng Việt, không cần nạp lại mỗi lần đổi mạng.
+
 ```
 smart-package/esp32-001/telemetry
 smart-package/esp32-001/event

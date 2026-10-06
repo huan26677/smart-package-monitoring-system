@@ -15,7 +15,7 @@ Mở dashboard tại http://localhost:8088. Backend tại http://localhost:8080.
 Mật khẩu được băm BCrypt khi khởi động backend. Phiên đăng nhập dùng cookie HttpOnly, SameSite=Lax; khi truy cập HTTPS qua Cloudflare, Nginx giữ thông tin HTTPS và Tomcat xử lý qua `server.forward-headers-strategy=native` để cookie có cờ Secure ([tài liệu Spring Boot](https://docs.spring.io/spring-boot/how-to/webserver.html)). Các API dữ liệu, Wi-Fi Anchor và xuất CSV đều cần đăng nhập. POST/DELETE và đăng nhập yêu cầu CSRF token. Phiên hết hạn sau 30 phút không có request; dashboard đang mở tiếp tục polling. Phiên cũng hết hạn khi backend khởi động lại. Endpoint health vẫn cho phép gọi để kiểm tra vận hành.
 
 Để đổi mật khẩu, sửa `.env` rồi chạy `docker compose up -d backend`. Không lưu mật khẩu trong mã frontend hoặc commit `.env`.
-Web và API hiện chỉ được mở trên máy chạy Docker. ESP32 kết nối MQTT qua địa chỉ IP LAN của máy đó, cổng 1883.
+Web và API được mở trên localhost và qua Cloudflare Tunnel. ESP32 có thể dùng `wss://mqtt.huan2k5.id.vn/mqtt` để kết nối qua Internet từ Wi-Fi 2,4 GHz hoặc điểm phát sóng điện thoại. Đổi Wi-Fi/MQTT trên trang cấu hình thiết bị, không cần sửa mã và nạp lại; xem [hướng dẫn mang thiết bị sang mạng khác](MOBILE_NETWORK.md). MQTT TCP cổng 1883 vẫn dùng được trong LAN nếu tài khoản và quyền topic phù hợp.
 
 Compose đợi EMQX sẵn sàng rồi mới chạy backend; đợi backend kết nối được PostgreSQL và đăng ký các topic MQTT rồi mới chạy web. Lần khởi động đầu có thể mất vài phút để build và khởi tạo dịch vụ.
 
@@ -45,7 +45,7 @@ Va đập bắt đầu từ 2,5 g; firmware giữ đỉnh và mức cao nhất t
 
 ESP32 có lịch sử NVS tối đa 128 sự kiện. Chỉ bản ghi đã được backend xác nhận mới được thay thế khi đầy. Nếu tất cả đều chưa đồng bộ, bản ghi mới bị từ chối và tăng bộ đếm `rejectedEvents`; dashboard hiển thị cảnh báo khi nhận telemetry. Trước khi ghi flash, có hàng đợi RAM 32 bản ghi để giảm việc chặn vòng đọc cảm biến; mất nguồn trước khi ghi xong có thể mất các bản ghi còn trong RAM. Dung lượng này hữu hạn, không bảo đảm lưu mọi sự kiện khi mất kết nối kéo dài.
 
-ESP32 nhận xác nhận JSON `{"deviceId":"esp32-001","eventId":123,"status":"SAVED"}` trên topic `smart-package/esp32-001/event-ack`, QoS 1, không retained. Backend chỉ gửi sau khi giao dịch cơ sở dữ liệu hoàn tất, hoặc khi bản ghi đó đã tồn tại. Thiết bị gửi lại sau 10 giây nếu chưa nhận xác nhận. PUBACK của EMQX không đánh dấu đã đồng bộ. Khi Wi-Fi mất quá 30 giây, thiết bị tiếp tục theo dõi và tự kết nối lại; không tự chuyển vào chế độ setup.
+ESP32 nhận xác nhận JSON `{"deviceId":"esp32-001","eventId":123,"status":"SAVED"}` trên topic `smart-package/esp32-001/event-ack`, QoS 1, không retained. Backend chỉ gửi sau khi giao dịch cơ sở dữ liệu hoàn tất, hoặc khi bản ghi đó đã tồn tại. Thiết bị gửi lại sau 10 giây nếu chưa nhận xác nhận. PUBACK của EMQX không đánh dấu đã đồng bộ. Khi mất Wi-Fi, thiết bị tiếp tục theo dõi và thử lại mỗi 5 giây. Sau khoảng 60 giây chưa nhận được IP, thiết bị mở thêm mạng `SMART_PACKAGE_SETUP` để đổi cấu hình; chế độ APSTA giữ việc thử kết nối Wi-Fi và lấy mẫu cảm biến.
 
 Lịch sử cũ V1/V2 được chuyển sang V3 khi khởi động mà giữ ID, giờ có sẵn và cờ đồng bộ. Dữ liệu cũ không có thời lượng/kiểm tra giới hạn đo được gửi các trường mới là `null`. Những sự kiện firmware cũ đã đánh dấu đồng bộ mà server chưa lưu không thể tự phục hồi bằng lần nâng cấp này.
 
@@ -82,6 +82,8 @@ docker compose up -d cloudflared
 ```
 
 Kiểm tra `docker compose logs --tail 50 cloudflared` để xác nhận kết nối tunnel.
+
+Hostname MQTT trỏ tới `http://emqx:8083` nếu cloudflared chạy trong cùng mạng Docker. ESP32 dùng URI WSS với đường dẫn `/mqtt`, tài khoản/mật khẩu MQTT nhập riêng trên trang cấu hình. WebSocket công khai đang yêu cầu xác thực; EMQX lưu cấu hình và tài khoản trong volume `smart_package_emqx_data`. Giữ máy chủ, Docker và tunnel chạy để thiết bị ngoài LAN có thể gửi dữ liệu. [ESP-MQTT](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32s3/api-reference/protocols/mqtt.html) hỗ trợ WSS; [Cloudflare](https://developers.cloudflare.com/network/websockets/) chuyển tiếp WebSocket.
 
 
 ## Dòng đo dùng cho AI

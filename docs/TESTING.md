@@ -46,6 +46,19 @@ docker run --rm --mount "type=bind,source=$firmwarePath,target=/src,readonly" -w
 
 Kiểm tra gom đỉnh, mức mạnh nhất, một đợt một va đập, free fall → drop, chạm giới hạn đo, thời gian uptime quay vòng, hàng đợi NVS đầy không ghi đè bản chưa đồng bộ, lỗi ghi cờ đồng bộ, phục hồi sau khởi động lại và chuyển lịch sử V2.
 
+`network_config_test.c` kiểm tra URI MQTT/WSS, tách tài khoản, giải mã form, chuỗi quá dài, trường lặp và giới hạn mật khẩu Wi-Fi. `wifi_recovery_test.c` chạy mã Wi-Fi manager thật với API ESP-IDF mô phỏng: thử lại mỗi 5 giây, mở AP cấu hình sau 60 giây, thử lại khi mở portal lỗi, kết nối phục hồi trước/sau thời hạn, chờ DHCP và sao chép đủ SSID/mật khẩu ở giới hạn. Cả năm chương trình được chạy bởi `tests/host/run.sh`.
+
+## Kiểm tra kết nối WSS và trang cấu hình ngày 06/10/2026
+
+- Build ESP-IDF 5.5.5 thành công, chạy năm chương trình kiểm thử C thành công. Sao lưu flash 0x0–0x310000 trước nâng cấp, chỉ nạp phân vùng ứng dụng trên ESP32-S3 COM3.
+- WSS công khai: WebSocket trả 101, thông tin MQTT đúng được CONNACK thành công và đăng ký topic; mật khẩu sai bị từ chối. Không gửi sự kiện giả hoặc dữ liệu huấn luyện qua phép thử này.
+- Thiết bị thật kết nối `wss://mqtt.huan2k5.id.vn/mqtt`, broker nhận client `esp32-001` qua địa chỉ cloudflared, đăng ký ba topic. Telemetry và đoạn AI mới tới backend, sự kiện thật được xác nhận lưu PostgreSQL, `pendingEvents=0`, giữ bộ đếm từ chối lịch sử 277.
+- Portal thật ở chế độ APSTA: trang và thông báo tiếng Việt, status không lộ mật khẩu; sai token trả 403. Mật khẩu Wi-Fi ngắn, đổi SSID không có mật khẩu, broker sai, đổi tài khoản MQTT thiếu mật khẩu, trường SSID lặp, body quá dài và NUL mã hóa đều trả 400. Status giữ nguyên sau các yêu cầu bị từ chối. Lưu cùng mạng/tài khoản với hai mật khẩu trống thành công; ESP32 khởi động lại và kết nối WSS bằng mật khẩu đã lưu.
+- Dashboard qua localhost: database/MQTT health OK, thiết bị ONLINE, telemetry mới và đoạn cảm biến AI có nhịp hợp lệ. Tên miền dashboard đang có Cloudflare Access nên yêu cầu đăng nhập lớp đó khi kiểm tra qua trình duyệt.
+- Chrome trên portal thật: hai ô mật khẩu trống, hiển thị đã kết nối, polling giữ bản nhập chưa lưu, phản hồi lỗi tiếng Việt và cho thử lại, màn hình 390 px không tràn ngang, không lỗi JavaScript. Chrome dashboard sau bản nạp cuối: đăng nhập thành công, telemetry tăng từ ID 38899 lên 38902 qua polling; đoạn AI mới có nhịp hợp lệ và chưa có mô hình, không lỗi JavaScript.
+
+Chưa thực hiện kiểm tra trên một Wi-Fi/điểm phát sóng khác trong lượt này. Hướng dẫn thực hiện và giới hạn khi mất mạng nằm trong [MOBILE_NETWORK.md](MOBILE_NETWORK.md).
+
 ## Đăng nhập và dữ liệu thực
 
 1. Truy cập dashboard chưa đăng nhập: phải thấy form đăng nhập; GET `/api/devices`, Wi-Fi Anchor và CSV phải trả 401.

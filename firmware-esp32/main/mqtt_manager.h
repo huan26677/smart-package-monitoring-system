@@ -5,17 +5,19 @@
 #include <stdint.h>
 #include "esp_wifi.h"
 #include "esp_err.h"
+#include "app_config.h"
 
 #include "mpu6050.h"
 #include "impact_detector.h"
 
 
 esp_err_t mqtt_manager_init(
-    const char *broker_uri
+    const app_config_t *settings
 );
 
 
 bool mqtt_manager_is_connected(void);
+const char *mqtt_manager_status(void);
 int mqtt_manager_publish_motion(const char *payload,int length,bool capture);
 
 

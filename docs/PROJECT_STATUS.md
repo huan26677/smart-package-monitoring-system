@@ -29,6 +29,8 @@ Phần AI: đã có thu chuỗi 200 mẫu/đoạn, gắn nhãn thủ công, xu�
 - MQTT offline synchronization
 - Wi-Fi Setup Portal
 - Wi-Fi failover
+- Đổi Wi-Fi/MQTT qua trang cấu hình tiếng Việt, lưu riêng tài khoản và mật khẩu MQTT trong NVS
+- MQTT WSS qua tên miền Cloudflare, xác thực chứng chỉ và tài khoản
 - NTP timestamp
 - Wi-Fi BSSID/RSSI scan
 - MQTT location-scan
@@ -218,13 +220,13 @@ Technology:
 - PostgreSQL chỉ expose localhost
 - Backend chỉ expose localhost
 - Web production chỉ expose localhost
-- MQTT port 1883 phục vụ ESP32 trong LAN
+- MQTT port 1883 phục vụ LAN; WSS `mqtt.huan2k5.id.vn:443/mqtt` phục vụ ESP32 ngoài LAN
 
 ## Cập nhật độ tin cậy và dashboard
 
 - Gom các mẫu va đập thành đợt; lưu đỉnh g, mức mạnh nhất, thời lượng quan sát và dấu hiệu chạm giới hạn đo; LCD và buzzer dùng cùng kết quả.
 - Xác nhận sự kiện sau khi backend lưu PostgreSQL; gửi lại khi chưa có xác nhận, chống trùng `(device_id, event_id)`.
-- Tiếp tục giám sát và kết nối lại Wi-Fi khi mất mạng kéo dài; không tự chuyển sang setup sau 30 giây.
+- Tiếp tục giám sát và kết nối lại Wi-Fi; mở thêm AP cấu hình sau khoảng 60 giây chưa có IP. Giữ BOOT 3 giây rồi thả cũng mở cấu hình, không xóa lịch sử.
 - Không ghi đè bản NVS chưa đồng bộ khi đầy; có bộ đếm bản ghi mới bị từ chối và cảnh báo trên dashboard.
 - Đăng nhập dashboard/API, cookie phiên HttpOnly, SameSite=Lax, CSRF cho thao tác ghi; thông tin tài khoản từ `.env`.
 - Tách giờ xảy ra và giờ nhận; bộ lọc loại/mức/thời gian, phân trang, thống kê toàn bộ kết quả lọc và xuất CSV.

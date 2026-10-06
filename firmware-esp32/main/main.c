@@ -7,8 +7,10 @@
 
 #include "esp_log.h"
 #include "esp_err.h"
+#include "esp_system.h"
 
 #include "driver/i2c_master.h"
+#include "driver/gpio.h"
 
 #include "mpu6050.h"
 #include "impact_detector.h"
@@ -22,11 +24,15 @@
 #include "mqtt_manager.h"
 #include "app_config.h"
 #include "setup_portal.h"
+#include "network_config.h"
+#include "network_console.h"
 #include "time_manager.h"
 #include "wifi_scanner.h"
 
 #define I2C_SDA_GPIO GPIO_NUM_8
 #define I2C_SCL_GPIO GPIO_NUM_9
+#define SETUP_BUTTON_GPIO GPIO_NUM_0
+#define SETUP_BUTTON_HOLD_MS 3000
 
 static const char *TAG = "SMART_PACKAGE";
 
@@ -55,6 +61,10 @@ static void update_lcd_status(
     }
     else if (detection->state == PACKAGE_NORMAL)
     {
+        if(setup_portal_is_active()) {
+            lcd1602_print_lines("CAU HINH MANG", "192.168.4.1");
+            return;
+        }
         snprintf(line1, sizeof(line1), "BINH THUONG");
         snprintf(
             line2,
@@ -547,6 +557,102 @@ static void monitor_task(void *arg)
 }
 
 
+static void setup_button_task(
+    void *arg
+)
+{
+    (void)arg;
+
+    int held_ms = 0;
+
+    while (1)
+    {
+        if (
+            gpio_get_level(
+                SETUP_BUTTON_GPIO
+            ) == 0
+        )
+        {
+            held_ms += 100;
+
+            if (
+                held_ms >=
+                SETUP_BUTTON_HOLD_MS
+            )
+            {
+                ESP_LOGW(
+                    TAG,
+                    "Yeu cau vao Setup Mode"
+                );
+
+                /* GPIO0 is a boot strap. Never reset while BOOT is held. */
+                while(gpio_get_level(SETUP_BUTTON_GPIO)==0) vTaskDelay(pdMS_TO_TICKS(100));
+                esp_err_t config_ret=app_config_request_setup_mode();
+                if(config_ret!=ESP_OK) ESP_LOGW(TAG,"Khong luu duoc yeu cau setup: %s",esp_err_to_name(config_ret));
+
+                /* The monitor task owns LCD updates once sampling starts. */
+                esp_err_t setup_ret=setup_portal_start();
+                if(setup_ret!=ESP_OK) ESP_LOGW(TAG,"Khong mo duoc setup: %s",esp_err_to_name(setup_ret));
+                held_ms=0;
+            }
+        }
+        else
+        {
+            held_ms = 0;
+        }
+
+        vTaskDelay(
+            pdMS_TO_TICKS(100)
+        );
+    }
+}
+
+static esp_err_t setup_button_init(void)
+{
+    gpio_config_t config =
+    {
+        .pin_bit_mask =
+            1ULL << SETUP_BUTTON_GPIO,
+
+        .mode =
+            GPIO_MODE_INPUT,
+
+        .pull_up_en =
+            GPIO_PULLUP_ENABLE,
+
+        .pull_down_en =
+            GPIO_PULLDOWN_DISABLE,
+
+        .intr_type =
+            GPIO_INTR_DISABLE,
+    };
+
+    esp_err_t ret =
+        gpio_config(
+            &config
+        );
+
+    if (ret != ESP_OK)
+    {
+        return ret;
+    }
+
+    BaseType_t task_result =
+        xTaskCreate(
+            setup_button_task,
+            "setup_button",
+            2048,
+            NULL,
+            2,
+            NULL
+        );
+
+    return task_result == pdPASS
+        ? ESP_OK
+        : ESP_ERR_NO_MEM;
+}
+
+
 void app_main(void)
 {
     /* =====================================================
@@ -574,11 +680,14 @@ void app_main(void)
     };
 
 
-    ESP_ERROR_CHECK(
-        app_config_load(
-            &app_config
-        )
-    );
+    esp_err_t config_ret=app_config_load(&app_config);
+    if(config_ret!=ESP_OK) {
+        ESP_LOGE(TAG,"Khong doc duoc cau hinh mang: %s; giu NVS, mo setup",esp_err_to_name(config_ret));
+        memset(&app_config,0,sizeof(app_config));
+    }
+    if(!network_wifi_password_valid(app_config.wifi_password)) {
+        app_config.configured=false;app_config.wifi_ssid[0]=0;app_config.wifi_password[0]=0;
+    }
 
     bool force_setup_mode =
         app_config_is_setup_requested();
@@ -662,9 +771,23 @@ void app_main(void)
         "BUZZER OK"
     );
 
+    ESP_ERROR_CHECK(
+        setup_button_init()
+    );
+
+    ESP_LOGI(
+        TAG,
+        "Nhan giu BOOT 3 giay de cau hinh mang"
+    );
+
     /* =====================================================
     * NETWORK MODE
     * ===================================================== */
+
+    ESP_ERROR_CHECK(wifi_manager_init(app_config.wifi_ssid,app_config.wifi_password));
+    ESP_ERROR_CHECK(time_manager_init());
+    if(app_config.configured) ESP_ERROR_CHECK(mqtt_manager_init(&app_config));
+    ESP_ERROR_CHECK(wifi_scanner_start());
 
     if (
         !app_config.configured ||
@@ -693,61 +816,6 @@ void app_main(void)
         lcd1602_print_lines(
             "CAU HINH",
             "192.168.4.1"
-        );
-    }
-    else
-    {
-        /*
-        * Da co config.
-        *
-        * Ket noi Wi-Fi binh thuong.
-        */
-        ESP_ERROR_CHECK(
-            wifi_manager_init(
-                app_config.wifi_ssid,
-                app_config.wifi_password
-            )
-        );
-
-
-        ESP_LOGI(
-            TAG,
-            "WiFi manager started"
-        );
-
-
-        /*
-        * Khoi dong MQTT.
-        */
-        ESP_ERROR_CHECK(
-            mqtt_manager_init(
-                app_config.mqtt_broker
-            )
-        );
-
-
-        ESP_LOGI(
-            TAG,
-            "MQTT manager started"
-        );
-
-        ESP_ERROR_CHECK(
-            time_manager_init()
-        );
-
-        ESP_LOGI(
-            TAG,
-            "Time manager started"
-        );
-
-        ESP_ERROR_CHECK(
-            wifi_scanner_start()
-        );
-
-
-        ESP_LOGI(
-            TAG,
-            "WiFi scanner started"
         );
     }
 
@@ -796,6 +864,7 @@ void app_main(void)
      * ===================================================== */
 
     impact_detector_init();
+    ESP_ERROR_CHECK(network_console_start());
     ESP_ERROR_CHECK(motion_collector_init());
 
     monitor_samples = xQueueCreate(1, sizeof(monitor_snapshot_t));

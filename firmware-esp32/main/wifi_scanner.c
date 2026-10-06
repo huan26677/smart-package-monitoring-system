@@ -75,8 +75,7 @@ static void wifi_scanner_task(
         /*
          * Chi scan khi STA dang ONLINE.
          *
-         * Neu dang Setup Mode thi task nay
-         * khong duoc tao tu main.c.
+         * APSTA setup can run alongside a connected station.
          */
         if (
             !wifi_manager_is_connected()

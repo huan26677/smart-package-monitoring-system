@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "nvs.h"
+#include "network_config.h"
 #include "esp_log.h"
 
 
@@ -206,10 +207,22 @@ esp_err_t app_config_load(
     }
 
 
-    ESP_LOGI(
-        TAG,
-        "Da nap config"
-    );
+    ret = load_string("mqtt_user", config->mqtt_username, sizeof(config->mqtt_username));
+    if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND) return ret;
+    ret = load_string("mqtt_pass", config->mqtt_password, sizeof(config->mqtt_password));
+    if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND) return ret;
+    network_broker_t broker;
+    if (network_parse_broker(config->mqtt_broker, &broker)) {
+        strcpy(config->mqtt_broker, broker.uri);
+        if (broker.has_credentials) {
+            strcpy(config->mqtt_username, broker.username);
+            strcpy(config->mqtt_password, broker.password);
+        }
+    } else {
+        ESP_LOGW(TAG, "Dia chi MQTT chua hop le; mo trang cau hinh");
+        config->configured = false;
+    }
+    ESP_LOGI(TAG, "Da nap config");
 
 
     ESP_LOGI(
@@ -221,8 +234,7 @@ esp_err_t app_config_load(
 
     ESP_LOGI(
         TAG,
-        "MQTT: %s",
-        config->mqtt_broker
+        "MQTT config da nap"
     );
 
 
@@ -244,6 +256,13 @@ esp_err_t app_config_save(
     }
 
 
+    network_broker_t broker;
+    if (!config->wifi_ssid[0] || strlen(config->wifi_ssid) > APP_CONFIG_SSID_MAX ||
+        !network_wifi_password_valid(config->wifi_password) ||
+        !network_parse_broker(config->mqtt_broker, &broker) ||
+        broker.has_credentials || (!config->mqtt_username[0] && config->mqtt_password[0])) {
+        return ESP_ERR_INVALID_ARG;
+    }
     esp_err_t ret;
 
 
@@ -288,6 +307,11 @@ esp_err_t app_config_save(
         return ret;
     }
 
+
+    ret = nvs_set_str(config_nvs_handle, "mqtt_user", config->mqtt_username);
+    if (ret != ESP_OK) return ret;
+    ret = nvs_set_str(config_nvs_handle, "mqtt_pass", config->mqtt_password);
+    if (ret != ESP_OK) return ret;
 
     ret =
         nvs_set_u8(

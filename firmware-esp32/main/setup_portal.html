@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cấu hình mạng · Giám sát kiện hàng</title>
+<style>
+*{box-sizing:border-box}body{font-family:system-ui,Arial,sans-serif;background:#eff3f8;color:#172133;margin:0;padding:20px}main{max-width:560px;margin:auto;background:white;padding:24px;border-radius:16px;box-shadow:0 8px 28px #10204015}h1{font-size:24px;margin:0 0 8px}h2{font-size:18px;margin:24px 0 12px}p,small{line-height:1.55}small{display:block;color:#53647a;margin-top:6px}label{display:block;font-weight:600;margin:16px 0 6px}input:not([type=checkbox]){width:100%;padding:12px;border:1px solid #bac8d8;border-radius:8px;font-size:16px}.choice{font-weight:400;display:flex;gap:8px;align-items:center}button{padding:13px;border:0;border-radius:8px;font-size:16px;cursor:pointer}button[type=submit]{width:100%;background:#165dcc;color:white;margin-top:24px}button:disabled{opacity:.6}.status{background:#edf4ff;border-radius:8px;padding:12px}.status p{margin:2px 0}.message{margin-top:16px;padding:12px;border-radius:8px;background:#edf4ff;white-space:pre-wrap}.message.error{background:#fff0f0;color:#a42424}[hidden]{display:none!important}details{margin-top:18px}summary{cursor:pointer;font-weight:600}a{color:#165dcc}
+</style>
+</head>
+<body><main>
+<h1>Cấu hình mạng</h1>
+<p>Giám sát va đập kiện hàng · ESP32-S3</p>
+<div class="status" aria-live="polite"><p id="wifi-status">Đang đọc trạng thái Wi-Fi…</p><p id="mqtt-status">Đang đọc trạng thái máy chủ…</p></div>
+<p>Đổi mạng tại đây, không cần sửa code hoặc nạp lại firmware. Dùng Wi-Fi <strong>2,4 GHz</strong> hoặc điểm phát sóng điện thoại có Internet.</p>
+<form id="config-form" method="post" action="/save">
+<input type="hidden" name="token" id="token">
+<h2>Mạng Wi-Fi</h2>
+<label for="ssid">Tên mạng Wi-Fi</label><input id="ssid" name="ssid" maxlength="32" autocomplete="off" required>
+<label for="password">Mật khẩu Wi-Fi</label><input id="password" name="password" type="password" maxlength="64" autocomplete="new-password">
+<small id="wifi-help">Nhập mật khẩu mạng mới. Khi giữ nguyên tên mạng, có thể để trống để giữ mật khẩu đã lưu.</small>
+<label class="choice"><input type="checkbox" name="open_wifi" value="1" id="open-wifi">Mạng Wi-Fi không có mật khẩu</label>
+<h2>Máy chủ MQTT</h2>
+<label for="broker">Địa chỉ máy chủ</label><input id="broker" name="broker" maxlength="256" placeholder="wss://mqtt.huan2k5.id.vn/mqtt" required autocomplete="off">
+<small>Để kết nối qua Internet, dùng địa chỉ WSS ở trên. Có thể dán địa chỉ có tài khoản; thiết bị sẽ tách tài khoản và mật khẩu để lưu.</small>
+<label for="mqtt-user">Tài khoản MQTT</label><input id="mqtt-user" name="mqtt_user" maxlength="64" autocomplete="off">
+<label for="mqtt-pass">Mật khẩu MQTT</label><input id="mqtt-pass" name="mqtt_pass" type="password" maxlength="128" autocomplete="new-password">
+<small id="mqtt-help">Nhập mật khẩu MQTT. Nếu giữ nguyên tài khoản, để trống để giữ mật khẩu đã lưu.</small>
+<label class="choice"><input type="checkbox" name="clear_mqtt" value="1">Máy chủ không dùng tài khoản MQTT</label>
+<button type="submit" id="save-button" disabled>Lưu và kết nối</button>
+</form>
+<div id="message" class="message" role="status" hidden></div>
+<details><summary>Cách dùng khi chuyển sang nơi khác</summary><p>Giữ nút BOOT khoảng 3 giây rồi thả để mở cấu hình. Nếu mất Wi-Fi 60 giây, thiết bị tự mở mạng <strong>SMART_PACKAGE_SETUP</strong>. Kết nối mạng này rồi mở <a href="http://192.168.4.1">http://192.168.4.1</a>.</p><p>Khi đang cấu hình hoặc mất mạng, cảm biến vẫn phát hiện và lưu sự kiện trong bộ nhớ thiết bị. Khi có mạng trở lại, các sự kiện đang chờ được gửi lên máy chủ. Bộ nhớ có giới hạn 128 sự kiện; không lưu toàn bộ dòng cảm biến khi mất mạng.</p></details>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let initialized=false,savedSsid='',saving=false;
+function message(text,error=false){$('message').hidden=false;$('message').textContent=text;$('message').classList.toggle('error',error)}
+async function refresh(){
+ if(saving)return;
+ try{
+  const r=await fetch('/status',{cache:'no-store'});if(!r.ok)throw new Error('Không đọc được cấu hình. Hãy tải lại trang.');const c=await r.json();
+  $('wifi-status').textContent='Wi-Fi: '+(c.wifi_connected?'Đã kết nối':'Chưa kết nối');
+  $('mqtt-status').textContent='Máy chủ MQTT: '+c.mqtt_status;
+  if(!initialized){$('ssid').value=c.ssid;$('broker').value=c.broker;$('mqtt-user').value=c.mqtt_user;$('token').value=c.token;savedSsid=c.ssid;
+   if(c.has_wifi_password)$('wifi-help').textContent='Đã có mật khẩu Wi-Fi. Giữ nguyên tên mạng và để trống để giữ mật khẩu. Đổi tên mạng thì nhập mật khẩu mới.';
+   if(c.has_mqtt_password)$('mqtt-help').textContent='Đã có mật khẩu MQTT. Giữ nguyên tài khoản và để trống để giữ mật khẩu.';
+   initialized=true;$('save-button').disabled=false;}
+ }catch(e){if(!initialized)message(e.message,true);$('wifi-status').textContent='Chưa đọc được trạng thái thiết bị';}
+}
+$('open-wifi').addEventListener('change',()=>{$('password').disabled=$('open-wifi').checked});
+$('ssid').addEventListener('input',()=>{if($('ssid').value!==savedSsid)$('wifi-help').textContent='Bạn đang đổi mạng. Hãy nhập mật khẩu mới hoặc chọn mạng không có mật khẩu.';});
+$('config-form').addEventListener('submit',async e=>{
+ e.preventDefault();if(saving||!initialized)return;saving=true;$('save-button').disabled=true;
+ try{const r=await fetch('/save',{method:'POST',body:new URLSearchParams(new FormData(e.target))});const c=await r.json();if(!r.ok)throw new Error(c.message||'Không lưu được cấu hình');message(c.message);$('save-button').textContent='Đã lưu cấu hình';}
+ catch(e){saving=false;$('save-button').disabled=false;message(e.message,true);}
+});
+refresh();setInterval(refresh,3000);
+</script></body></html>

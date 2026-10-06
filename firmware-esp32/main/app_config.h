@@ -7,7 +7,9 @@
 
 #define APP_CONFIG_SSID_MAX       32
 #define APP_CONFIG_PASSWORD_MAX   64
-#define APP_CONFIG_BROKER_MAX     128
+#define APP_CONFIG_BROKER_MAX     256
+#define APP_CONFIG_MQTT_USER_MAX  64
+#define APP_CONFIG_MQTT_PASS_MAX  128
 
 
 typedef struct
@@ -25,6 +27,8 @@ typedef struct
     ];
 
     bool configured;
+    char mqtt_username[APP_CONFIG_MQTT_USER_MAX + 1];
+    char mqtt_password[APP_CONFIG_MQTT_PASS_MAX + 1];
 
 } app_config_t;
 
