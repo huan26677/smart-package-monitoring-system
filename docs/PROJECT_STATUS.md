@@ -4,6 +4,8 @@
 
 Giai đoạn 9 - Hoàn thiện, triển khai và kiểm thử hệ thống
 
+Phần AI: đã có thu chuỗi 200 mẫu/đoạn, gắn nhãn thủ công, xuất dữ liệu, huấn luyện Random Forest trên máy tính và suy luận Java. Mô hình chưa huấn luyện bằng dữ liệu kiện hàng thật; cần người dùng thực hiện các buổi thử theo [AI_GUIDE.md](AI_GUIDE.md). Các cảnh báo theo ngưỡng tiếp tục hoạt động độc lập.
+
 ## ESP32 Firmware
 
 Đã hoàn thành:
@@ -21,7 +23,7 @@ Giai đoạn 9 - Hoàn thiện, triển khai và kiểm thử hệ thống
 - LCD1602
 - Active Buzzer
 - Event Log NVS
-- Event Store V2
+- Event Store V3 (128 bản ghi, chuyển lịch sử V1/V2)
 - MQTT telemetry
 - MQTT event
 - MQTT offline synchronization
@@ -218,6 +220,17 @@ Technology:
 - Web production chỉ expose localhost
 - MQTT port 1883 phục vụ ESP32 trong LAN
 
+## Cập nhật độ tin cậy và dashboard
+
+- Gom các mẫu va đập thành đợt; lưu đỉnh g, mức mạnh nhất, thời lượng quan sát và dấu hiệu chạm giới hạn đo; LCD và buzzer dùng cùng kết quả.
+- Xác nhận sự kiện sau khi backend lưu PostgreSQL; gửi lại khi chưa có xác nhận, chống trùng `(device_id, event_id)`.
+- Tiếp tục giám sát và kết nối lại Wi-Fi khi mất mạng kéo dài; không tự chuyển sang setup sau 30 giây.
+- Không ghi đè bản NVS chưa đồng bộ khi đầy; có bộ đếm bản ghi mới bị từ chối và cảnh báo trên dashboard.
+- Đăng nhập dashboard/API, cookie phiên HttpOnly, SameSite=Lax, CSRF cho thao tác ghi; thông tin tài khoản từ `.env`.
+- Tách giờ xảy ra và giờ nhận; bộ lọc loại/mức/thời gian, phân trang, thống kê toàn bộ kết quả lọc và xuất CSV.
+- Cảnh báo va đập/rơi được giữ đến khi người dùng xác nhận đã xem trong trình duyệt.
+- 16 unit test backend; kiểm thử C với dữ liệu cảm biến/NVS mô phỏng. Xem [TESTING.md](TESTING.md).
+
 ## Next Step
 
-Giai đoạn 9A - Hoàn thiện tài liệu, backup dữ liệu và kiểm thử end-to-end trước khi demo.
+Thực hiện đo trên kiện mẫu, đối chiếu nhãn quan sát và đánh giá ngưỡng theo [EXPERIMENTS.md](EXPERIMENTS.md). Các ngưỡng gia tốc hiện tại là ngưỡng thử nghiệm; chưa có kết quả vật lý chứng minh độ chính xác phát hiện hoặc mức hư hại của hàng.

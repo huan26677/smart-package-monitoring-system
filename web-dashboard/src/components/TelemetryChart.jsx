@@ -92,7 +92,7 @@ function TelemetryChart({
 
     return (
       <div className="empty">
-        No telemetry history
+        Chưa có lịch sử cảm biến
       </div>
     );
   }
@@ -132,21 +132,21 @@ function TelemetryChart({
     <div className="telemetry-charts">
 
       <MetricChart
-        title="Total G"
+        title="Gia tốc tổng hợp"
         data={chartData}
         dataKey="g"
         unit="g"
       />
 
       <MetricChart
-        title="Angle"
+        title="Góc nghiêng"
         data={chartData}
         dataKey="angle"
         unit="°"
       />
 
       <MetricChart
-        title="Vibration"
+        title="Mức rung"
         data={chartData}
         dataKey="vibration"
         unit=""

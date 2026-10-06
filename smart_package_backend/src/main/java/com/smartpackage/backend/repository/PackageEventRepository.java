@@ -9,7 +9,7 @@ public interface PackageEventRepository
         extends JpaRepository<
                 PackageEventEntity,
                 Long
-        > {
+        >, org.springframework.data.jpa.repository.JpaSpecificationExecutor<PackageEventEntity> {
 
         boolean existsByDevice_DeviceIdAndEventId(
                 String deviceId,

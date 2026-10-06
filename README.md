@@ -2,6 +2,8 @@
 
 Hệ thống IoT giám sát va đập, trạng thái vận chuyển và vị trí tương đối của kiện hàng.
 
+Đã bổ sung thu dữ liệu cảm biến, gắn nhãn và phân loại AI ba nhóm. Xem [hướng dẫn AI bằng tiếng Việt](docs/AI_GUIDE.md). Mô hình chỉ được nạp sau khi thu đủ dữ liệu thật và đánh giá theo nhóm buổi thử.
+
 ## Architecture
 
 ```text
@@ -87,6 +89,7 @@ Internet / HTTPS
 smart-package/esp32-001/telemetry
 smart-package/esp32-001/event
 smart-package/esp32-001/location-scan
+smart-package/esp32-001/event-ack
 ```
 
 ## Main REST APIs
@@ -97,6 +100,9 @@ GET /api/devices
 GET /api/devices/{deviceId}/dashboard
 GET /api/devices/{deviceId}/telemetry
 GET /api/devices/{deviceId}/events
+GET /api/devices/{deviceId}/event-history
+GET /api/devices/{deviceId}/event-summary
+GET /api/devices/{deviceId}/events.csv
 GET /api/devices/{deviceId}/location/latest
 GET /api/devices/{deviceId}/location-scans
 
@@ -112,6 +118,8 @@ Create local `.env`:
 POSTGRES_DB=smart_package
 POSTGRES_USER=smartpackage
 POSTGRES_PASSWORD=YOUR_PASSWORD
+DASHBOARD_ADMIN_USERNAME=admin
+DASHBOARD_ADMIN_PASSWORD=YOUR_STRONG_PASSWORD_AT_LEAST_16_CHARACTERS
 
 CLOUDFLARE_TUNNEL_TOKEN=YOUR_TOKEN
 ```
@@ -140,6 +148,12 @@ docker compose logs cloudflared --tail=100
 ```
 http://localhost:8088
 ```
+
+Dashboard và API dữ liệu yêu cầu đăng nhập. Tài khoản và mật khẩu lấy từ `.env`; không đưa file này lên Git. Hướng dẫn vận hành: [docs/RUNNING.md](docs/RUNNING.md).
+
+Firmware gom các mẫu của một va đập để lưu đỉnh gia tốc, thời lượng và dấu hiệu chạm giới hạn đo. Sự kiện được lưu trên ESP32, gửi lại đến khi backend xác nhận đã lưu vào PostgreSQL; QoS 1 của broker không thay thế xác nhận này. Dashboard có bộ lọc, phân trang, thống kê và xuất CSV.
+
+Ngưỡng phân loại hiện dùng cho thử nghiệm. Kế hoạch đo thực tế và biểu mẫu báo cáo: [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
 
 ## Public Web
 The production Web Dashboard is published through Cloudflare Tunnel using a custom HTTPS domain.

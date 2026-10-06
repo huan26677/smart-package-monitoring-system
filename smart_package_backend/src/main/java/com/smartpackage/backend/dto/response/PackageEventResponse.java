@@ -27,7 +27,11 @@ public record PackageEventResponse(
 
         String timeText,
 
-        Instant receivedAt
+        Instant receivedAt,
+
+        Long durationMs,
+
+        Boolean saturated
 
 ) {
 }

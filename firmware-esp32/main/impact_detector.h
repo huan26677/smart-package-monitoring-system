@@ -2,7 +2,7 @@
 #define IMPACT_DETECTOR_H
 
 #include <stdbool.h>
-#include "mpu6050.h"
+#include "sensor_data.h"
 
 typedef enum
 {
@@ -46,6 +46,14 @@ typedef struct
     int calibration_percent;
 
     bool new_event;
+    package_state_t event_type;
+    impact_level_t event_level;
+    float event_peak_g;
+    float event_angle;
+    float event_vibration;
+    uint32_t event_started_ms;
+    uint32_t event_duration_ms;
+    bool event_saturated;
 
 } impact_result_t;
 
@@ -53,7 +61,8 @@ void impact_detector_init(void);
 
 void impact_detector_update(
     const mpu6050_data_t *sensor,
-    impact_result_t *result
+    impact_result_t *result,
+    uint32_t now_ms
 );
 
 const char *impact_level_to_string(

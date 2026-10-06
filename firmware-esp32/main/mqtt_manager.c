@@ -2,11 +2,17 @@
 #include <stdio.h>
 #include <string.h>
 #include "event_log.h"
+#include "motion_collector.h"
 #include "time_manager.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "mqtt_client.h"
+#include "cJSON.h"
+#include "esp_timer.h"
+#include <math.h>
+#include <stdatomic.h>
+#include "freertos/queue.h"
 
 
 #define DEVICE_ID "esp32-001"
@@ -14,6 +20,11 @@
 
 #define TOPIC_TELEMETRY \
     "smart-package/" DEVICE_ID "/telemetry"
+
+#define TOPIC_EVENT_ACK "smart-package/" DEVICE_ID "/event-ack"
+#define TOPIC_MOTION "smart-package/" DEVICE_ID "/motion-window"
+#define TOPIC_MOTION_ACK "smart-package/" DEVICE_ID "/motion-ack"
+#define TOPIC_MOTION_CONTROL "smart-package/" DEVICE_ID "/motion-control"
 
 #define TOPIC_EVENT \
     "smart-package/" DEVICE_ID "/event"
@@ -29,17 +40,14 @@ static esp_mqtt_client_handle_t
     mqtt_client = NULL;
 
 
-static bool mqtt_connected =
+static atomic_bool mqtt_connected =
     false;
 
-static volatile int
-    pending_msg_id = -1;
-
-static volatile uint32_t
-    pending_event_id = 0;
-
-static volatile int
-    acknowledged_msg_id = -1;
+static QueueHandle_t receipt_queue;
+static char receipt_payload[512];
+static int receipt_length;
+static bool receipt_topic_valid;
+static int receipt_kind;
 
 /* =========================================================
  * PUBLISH EVENT RECORD
@@ -67,7 +75,12 @@ static int mqtt_publish_event_record(
         sizeof(time_text)
     );
 
-    char payload[384];
+    char payload[512];
+    char duration_text[16];
+    if (event->measurement_version)
+        snprintf(duration_text, sizeof(duration_text), "%lu", (unsigned long)event->duration_ms);
+    else
+        strcpy(duration_text, "null");
 
     int len =
         snprintf(
@@ -84,7 +97,9 @@ static int mqtt_publish_event_record(
             "\"vibration\":%.3f,"
             "\"uptimeMs\":%lu,"
             "\"timestamp\":%lld,"
-            "\"timeText\":\"%s\""
+            "\"timeText\":\"%s\","
+            "\"durationMs\":%s,"
+            "\"saturated\":%s"
             "}",
 
             DEVICE_ID,
@@ -112,7 +127,9 @@ static int mqtt_publish_event_record(
             (long long)
                 event->timestamp,
                 
-            time_text
+            time_text,
+            duration_text,
+            event->measurement_version ? (event->saturated ? "true" : "false") : "null"
         );
 
 
@@ -157,136 +174,63 @@ static int mqtt_publish_event_record(
     return msg_id;
 }
 
-static void mqtt_sync_task(
-    void *parameter
-)
-{
-    event_record_t event;
-
-
-    while (1)
-    {
-        /*
-         * MQTT offline
-         */
-        if (!mqtt_connected)
-        {
-            pending_msg_id = -1;
-            pending_event_id = 0;
-            acknowledged_msg_id = -1;
-
-            vTaskDelay(
-                pdMS_TO_TICKS(1000)
-            );
-
-            continue;
-        }
-
-
-        /*
-         * Dang cho broker ACK.
-         */
-        if (pending_msg_id >= 0)
-        {
-            if (
-                acknowledged_msg_id ==
-                pending_msg_id
-            )
-            {
-                uint32_t synced_id =
-                    pending_event_id;
-
-
-                ESP_LOGI(
-                    TAG,
-                    "Broker ACK EVENT #%lu",
-                    (unsigned long)
-                        synced_id
-                );
-
-
-                esp_err_t ret =
-                    event_log_mark_synced(
-                        synced_id
-                    );
-
-
-                if (ret != ESP_OK)
-                {
-                    ESP_LOGE(
-                        TAG,
-                        "Khong mark sync #%lu: %s",
-                        (unsigned long)
-                            synced_id,
-
-                        esp_err_to_name(
-                            ret
-                        )
-                    );
-                }
-
-
-                pending_msg_id = -1;
-                pending_event_id = 0;
-                acknowledged_msg_id = -1;
-            }
-
-
-            vTaskDelay(
-                pdMS_TO_TICKS(100)
-            );
-
-            continue;
-        }
-
-
-        /*
-         * Tim event offline cu nhat.
-         */
-        if (
-            event_log_get_first_unsynced(
-                &event
-            )
-        )
-        {
-            int msg_id =
-                mqtt_publish_event_record(
-                    &event
-                );
-
-
-            if (msg_id >= 0)
-            {
-                pending_msg_id =
-                    msg_id;
-
-                pending_event_id =
-                    event.id;
-
-
-                ESP_LOGI(
-                    TAG,
-                    "Sync EVENT #%lu",
-                    (unsigned long)
-                        event.id
-                );
+static void mqtt_sync_task(void *parameter) {
+    event_record_t record;
+    uint32_t pending_id = 0;
+    int64_t sent_at = 0;
+    while (1) {
+        uint32_t ack_id;
+        if (xQueueReceive(receipt_queue, &ack_id, pdMS_TO_TICKS(100)) == pdTRUE) {
+            // Only a receipt for the current durable record can complete it.
+            if (ack_id == pending_id && event_log_mark_synced(ack_id) == ESP_OK) {
+                ESP_LOGI(TAG, "Database confirmed EVENT #%lu", (unsigned long)ack_id);
+                pending_id = 0;
             }
         }
-        else
-        {
-            /*
-             * Khong con event cho sync.
-             */
-            vTaskDelay(
-                pdMS_TO_TICKS(1000)
-            );
+        if (!mqtt_connected) { pending_id = 0; continue; }
+        if (pending_id && esp_timer_get_time() - sent_at < 10000000LL) continue;
+        pending_id = 0;
+        if (event_log_get_first_unsynced(&record)) {
+            pending_id = record.id;
+            sent_at = esp_timer_get_time();
+            if (mqtt_publish_event_record(&record) < 0) pending_id = 0;
         }
-
-
-        vTaskDelay(
-            pdMS_TO_TICKS(100)
-        );
     }
+}
+
+static void receive_receipt(esp_mqtt_event_handle_t event) {
+    if (event->current_data_offset == 0) {
+        receipt_length = 0;
+        receipt_topic_valid = event->topic_len == strlen(TOPIC_EVENT_ACK)
+                && memcmp(event->topic, TOPIC_EVENT_ACK, event->topic_len) == 0;
+        receipt_kind=receipt_topic_valid?1:0;
+        if(event->topic_len==strlen(TOPIC_MOTION_ACK)&&!memcmp(event->topic,TOPIC_MOTION_ACK,event->topic_len)) receipt_kind=2;
+        if(event->topic_len==strlen(TOPIC_MOTION_CONTROL)&&!memcmp(event->topic,TOPIC_MOTION_CONTROL,event->topic_len)&&!event->retain) receipt_kind=3;
+        receipt_topic_valid=receipt_kind!=0;
+    }
+    if (!receipt_topic_valid || event->total_data_len < 0 || event->data_len < 0
+            || event->total_data_len >= sizeof(receipt_payload)
+            || event->data_len > event->total_data_len - receipt_length
+            || event->current_data_offset != receipt_length) return;
+    memcpy(receipt_payload + receipt_length, event->data, event->data_len);
+    receipt_length += event->data_len;
+    if (receipt_length != event->total_data_len) return;
+    receipt_payload[receipt_length] = 0;
+    cJSON *root = cJSON_Parse(receipt_payload);
+    if (!root) return;
+    if(receipt_kind==2) {motion_collector_receipt(root);cJSON_Delete(root);return;}
+    if(receipt_kind==3) {motion_collector_control(root);cJSON_Delete(root);return;}
+    cJSON *status = cJSON_GetObjectItemCaseSensitive(root, "status");
+    cJSON *device = cJSON_GetObjectItemCaseSensitive(root, "deviceId");
+    cJSON *id = cJSON_GetObjectItemCaseSensitive(root, "eventId");
+    if (cJSON_IsString(status) && strcmp(status->valuestring, "SAVED") == 0
+            && cJSON_IsString(device) && strcmp(device->valuestring, DEVICE_ID) == 0
+            && cJSON_IsNumber(id) && id->valuedouble >= 1 && id->valuedouble <= UINT32_MAX
+            && floor(id->valuedouble) == id->valuedouble) {
+        uint32_t event_id = (uint32_t)id->valuedouble;
+        xQueueSend(receipt_queue, &event_id, 0);
+    }
+    cJSON_Delete(root);
 }
 
 /* =========================================================
@@ -312,6 +256,9 @@ static void mqtt_event_handler(
         case MQTT_EVENT_CONNECTED:
 
             mqtt_connected = true;
+            esp_mqtt_client_subscribe(mqtt_client, TOPIC_EVENT_ACK, 1);
+            esp_mqtt_client_subscribe(mqtt_client, TOPIC_MOTION_ACK, 1);
+            esp_mqtt_client_subscribe(mqtt_client, TOPIC_MOTION_CONTROL, 1);
 
             ESP_LOGI(
                 TAG,
@@ -322,17 +269,11 @@ static void mqtt_event_handler(
 
         
         case MQTT_EVENT_PUBLISHED:
+            // PUBACK acknowledges the broker, not durable database storage.
+            break;
 
-            ESP_LOGI(
-                TAG,
-                "PUBACK msg_id=%d",
-                event->msg_id
-            );
-
-
-            acknowledged_msg_id =
-                event->msg_id;
-
+        case MQTT_EVENT_DATA:
+            receive_receipt(event);
             break;
 
         case MQTT_EVENT_DISCONNECTED:
@@ -389,10 +330,17 @@ esp_err_t mqtt_manager_init(
     );
 
 
+    receipt_queue = xQueueCreate(16, sizeof(uint32_t));
+    if (!receipt_queue) return ESP_ERR_NO_MEM;
+
     esp_mqtt_client_config_t config =
     {
         .broker.address.uri =
             broker_uri,
+        // A 200-sample motion frame must fit the output buffer. This also avoids
+        // fragmented-message state leaking into subsequent small publishes in IDF 5.5.
+        .buffer.size = 1024,
+        .buffer.out_size = 24576,
     };
 
 
@@ -487,6 +435,13 @@ bool mqtt_manager_is_connected(void)
     return mqtt_connected;
 }
 
+int mqtt_manager_publish_motion(const char *payload,int length,bool capture) {
+    if(!mqtt_connected || !mqtt_client || !payload || length<=0) return -1;
+    // Skip live windows if the network is backed up; preserve room for durable event messages.
+    if(esp_mqtt_client_get_outbox_size(mqtt_client)>24000) return -1;
+    return esp_mqtt_client_enqueue(mqtt_client,TOPIC_MOTION,payload,length,capture?1:0,0,true);
+}
+
 
 /* =========================================================
  * TELEMETRY
@@ -516,7 +471,7 @@ esp_err_t mqtt_manager_publish_telemetry(
     }
 
 
-    char payload[256];
+    char payload[384];
 
 
     int len =
@@ -530,7 +485,9 @@ esp_err_t mqtt_manager_publish_telemetry(
             "\"angle\":%.1f,"
             "\"vibration\":%.3f,"
             "\"state\":\"%s\","
-            "\"rssi\":%d"
+            "\"rssi\":%d,"
+            "\"pendingEvents\":%u,"
+            "\"rejectedEvents\":%u"
             "}",
 
             DEVICE_ID,
@@ -545,7 +502,9 @@ esp_err_t mqtt_manager_publish_telemetry(
                 detection->state
             ),
 
-            wifi_rssi
+            wifi_rssi,
+            (unsigned)event_log_unsynced_count(),
+            (unsigned)event_log_rejected_count()
         );
 
 
@@ -559,7 +518,7 @@ esp_err_t mqtt_manager_publish_telemetry(
 
 
     int msg_id =
-        esp_mqtt_client_publish(
+        esp_mqtt_client_enqueue(
             mqtt_client,
 
             TOPIC_TELEMETRY,
@@ -570,7 +529,8 @@ esp_err_t mqtt_manager_publish_telemetry(
 
             0,
 
-            0
+            0,
+            true
         );
 
 

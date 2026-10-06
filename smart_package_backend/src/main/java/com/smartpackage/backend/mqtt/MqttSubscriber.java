@@ -4,6 +4,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.RejectedExecutionException;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -21,12 +24,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.smartpackage.backend.service.MqttMessageService;
+import com.smartpackage.backend.ai.MotionService;
 
 @Component
 public class MqttSubscriber implements MqttCallbackExtended {
 
     private static final Logger logger = LoggerFactory.getLogger(MqttSubscriber.class);
     private final MqttMessageService mqttMessageService;
+    private final MotionService motionService;
     private final String broker;
     private final String clientId;
     private final String[] topics;
@@ -41,9 +46,16 @@ public class MqttSubscriber implements MqttCallbackExtended {
     private volatile MqttClient client;
     private volatile boolean subscribed;
     private volatile boolean stopping;
+    private final ThreadPoolExecutor receiptExecutor = new ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(128), task -> {
+                Thread thread = new Thread(task, "mqtt-receipts");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     public MqttSubscriber(
             MqttMessageService mqttMessageService,
+            MotionService motionService,
             @Value("${app.mqtt.broker}") String broker,
             @Value("${app.mqtt.client-id}") String clientId,
             @Value("${app.mqtt.topic.telemetry}") String telemetryTopic,
@@ -54,9 +66,10 @@ public class MqttSubscriber implements MqttCallbackExtended {
             throw new IllegalArgumentException("MQTT retry interval must be positive");
         }
         this.mqttMessageService = mqttMessageService;
+        this.motionService = motionService;
         this.broker = broker;
         this.clientId = clientId;
-        this.topics = new String[] {telemetryTopic, eventTopic, locationTopic};
+        this.topics = new String[] {telemetryTopic, eventTopic, locationTopic, "smart-package/+/motion-window"};
         this.retryIntervalMillis = retryIntervalMillis;
     }
 
@@ -87,7 +100,7 @@ public class MqttSubscriber implements MqttCallbackExtended {
             }
             if (!stopping && !subscribed) {
                 // Keep SUBACK waits off the Paho callback thread.
-                client.subscribe(topics, new int[] {0, 1, 0});
+                client.subscribe(topics, new int[] {0, 1, 0, 1});
                 subscribed = true;
                 logger.info("[MQTT] SUBSCRIBED: {}", String.join(", ", topics));
             }
@@ -121,12 +134,48 @@ public class MqttSubscriber implements MqttCallbackExtended {
 
     @Override
     public void messageArrived(String topic, MqttMessage message) {
-        mqttMessageService.handle(topic, new String(message.getPayload(), StandardCharsets.UTF_8));
+        if (topic.endsWith("/motion-window")) {
+            try {
+                String receipt=motionService.accept(topic,new String(message.getPayload(),StandardCharsets.UTF_8));
+                if(receipt!=null && !stopping) receiptExecutor.execute(()-> {
+                    try {client.publish(topic.replace("/motion-window","/motion-ack"),receipt.getBytes(StandardCharsets.UTF_8),1,false);}
+                    catch(MqttException e) {logger.warn("Motion receipt failed; device will retry");}
+                });
+            } catch(Exception e) {logger.warn("Motion window rejected: {}",e.getMessage());}
+            return;
+        }
+        var receipt = mqttMessageService.handle(
+                topic, new String(message.getPayload(), StandardCharsets.UTF_8));
+        if (receipt != null && !stopping) {
+            try {
+                receiptExecutor.execute(() -> publishReceipt(receipt));
+            } catch (RejectedExecutionException exception) {
+                logger.warn("Receipt queue unavailable; device will retry event {}", receipt.eventId());
+            }
+        }
+    }
+
+    private void publishReceipt(MqttMessageService.EventReceipt receipt) {
+        try {
+            String payload = "{\"deviceId\":\"" + receipt.deviceId()
+                    + "\",\"eventId\":" + receipt.eventId() + ",\"status\":\"SAVED\"}";
+            client.publish("smart-package/" + receipt.deviceId() + "/event-ack",
+                    payload.getBytes(StandardCharsets.UTF_8), 1, false);
+        } catch (MqttException exception) {
+            logger.warn("Receipt publish failed for {} / {}; device will retry",
+                    receipt.deviceId(), receipt.eventId());
+        }
+    }
+
+    public void publishMotionControl(String deviceId,String payload) throws MqttException {
+        if(!isReady()) throw new MqttException(MqttException.REASON_CODE_CLIENT_NOT_CONNECTED);
+        if(!deviceId.matches("[A-Za-z0-9_-]{1,64}")) throw new IllegalArgumentException("Mã thiết bị không hợp lệ.");
+        client.publish("smart-package/"+deviceId+"/motion-control",payload.getBytes(StandardCharsets.UTF_8),1,false);
     }
 
     @Override
     public void deliveryComplete(IMqttDeliveryToken token) {
-        // This client only subscribes.
+        // Receipt delivery to the broker needs no additional application action.
     }
 
     @PreDestroy
@@ -134,6 +183,7 @@ public class MqttSubscriber implements MqttCallbackExtended {
         stopping = true;
         subscribed = false;
         connectionExecutor.shutdownNow();
+        receiptExecutor.shutdownNow();
         // Wait for the bounded connection attempt before closing the client.
         synchronized (this) {
             if (client != null) {

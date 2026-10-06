@@ -66,7 +66,7 @@ function WifiAnchorPanel({
     ) {
 
       setMessage(
-        "Trình duyệt không hỗ trợ geolocation."
+        "Trình duyệt không hỗ trợ xác định vị trí."
       );
 
       return;
@@ -140,7 +140,7 @@ function WifiAnchorPanel({
     ) {
 
       setMessage(
-        "BSSID, tên, latitude và longitude là bắt buộc."
+        "Địa chỉ BSSID, tên, vĩ độ và kinh độ là bắt buộc."
       );
 
       return;
@@ -185,7 +185,7 @@ function WifiAnchorPanel({
     ) {
 
       setMessage(
-        "Latitude hoặc longitude không hợp lệ."
+        "Vĩ độ hoặc kinh độ không hợp lệ."
       );
 
       return;
@@ -198,7 +198,7 @@ function WifiAnchorPanel({
       );
 
       setMessage(
-        "Đã lưu Wi-Fi Anchor."
+        "Đã lưu mốc Wi-Fi."
       );
 
       setForm(
@@ -209,7 +209,7 @@ function WifiAnchorPanel({
     catch {
 
       setMessage(
-        "Không thể lưu Wi-Fi Anchor."
+        "Không thể lưu mốc Wi-Fi."
       );
     }
   }
@@ -220,7 +220,7 @@ function WifiAnchorPanel({
 
     const confirmed =
       window.confirm(
-        `Xóa Anchor ${bssid}?`
+        `Xóa mốc ${bssid}?`
       );
 
     if (!confirmed) {
@@ -235,14 +235,14 @@ function WifiAnchorPanel({
       );
 
       setMessage(
-        "Đã xóa Wi-Fi Anchor."
+        "Đã xóa mốc Wi-Fi."
       );
 
     }
     catch {
 
       setMessage(
-        "Không thể xóa Wi-Fi Anchor."
+        "Không thể xóa mốc Wi-Fi."
       );
     }
   }
@@ -349,7 +349,7 @@ function WifiAnchorPanel({
         <label className="form-field">
 
           <span>
-            Latitude
+            Vĩ độ
           </span>
 
           <input
@@ -377,7 +377,7 @@ function WifiAnchorPanel({
         <label className="form-field">
 
           <span>
-            Longitude
+            Kinh độ
           </span>
 
           <input
@@ -405,7 +405,7 @@ function WifiAnchorPanel({
         <label className="form-field">
 
           <span>
-            Radius (m)
+            Bán kính (m)
           </span>
 
           <input
@@ -455,7 +455,7 @@ function WifiAnchorPanel({
             {
               busy
                 ? "Đang lưu..."
-                : "Lưu / cập nhật Anchor"
+                : "Lưu / cập nhật mốc"
             }
 
           </button>
@@ -477,7 +477,7 @@ function WifiAnchorPanel({
 
         Có thể chọn BSSID từ Wi-Fi
         mà ESP32 vừa quét.
-        Gửi lại cùng BSSID sẽ cập nhật Anchor cũ.
+        Gửi lại cùng BSSID sẽ cập nhật mốc cũ.
 
       </div>
 
@@ -490,7 +490,7 @@ function WifiAnchorPanel({
             <tr>
 
               <th>
-                Name
+                Tên
               </th>
 
               <th>
@@ -498,19 +498,19 @@ function WifiAnchorPanel({
               </th>
 
               <th>
-                Latitude
+                Vĩ độ
               </th>
 
               <th>
-                Longitude
+                Kinh độ
               </th>
 
               <th>
-                Radius
+                Bán kính
               </th>
 
               <th>
-                Action
+                Thao tác
               </th>
 
             </tr>

@@ -49,8 +49,8 @@ class MqttSubscriberTests {
                 await(subscriber::isReady);
                 assertTrue(attempts.get() >= 2);
                 verify(clients.constructed().get(0)).subscribe(
-                        new String[] {"test/+/telemetry", "test/+/event", "test/+/location-scan"},
-                        new int[] {0, 1, 0});
+                        new String[] {"test/+/telemetry", "test/+/event", "test/+/location-scan", "smart-package/+/motion-window"},
+                        new int[] {0, 1, 0, 1});
             } finally {
                 subscriber.stop();
             }
@@ -115,7 +115,7 @@ class MqttSubscriberTests {
     }
 
     private MqttSubscriber subscriber() {
-        return new MqttSubscriber(mock(MqttMessageService.class), "tcp://localhost:1883",
+        return new MqttSubscriber(mock(MqttMessageService.class), mock(com.smartpackage.backend.ai.MotionService.class), "tcp://localhost:1883",
                 "test-client", "test/+/telemetry", "test/+/event", "test/+/location-scan", 25);
     }
 

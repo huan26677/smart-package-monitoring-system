@@ -1,3 +1,6 @@
+import {labelVi} from "../services/labels";
+import { formatOccurredAt, formatReceivedAt } from "../services/eventFormat";
+
 function getLevelClass(
   level
 ) {
@@ -11,27 +14,6 @@ function getLevelClass(
     "level-" +
     level.toLowerCase()
   );
-}
-
-function formatEventTime(
-  event
-) {
-
-  if (event.receivedAt) {
-
-    return new Date(
-      event.receivedAt
-    ).toLocaleString(
-      "vi-VN"
-    );
-  }
-
-  if (event.timeText) {
-
-    return event.timeText;
-  }
-
-  return "--";
 }
 
 function formatNumber(
@@ -65,7 +47,7 @@ function EventTable({
 
     return (
       <div className="empty">
-        No package event
+        Chưa có sự kiện kiện hàng
       </div>
     );
   }
@@ -80,15 +62,16 @@ function EventTable({
           <tr>
 
             <th>
-              Time
+              Giờ xảy ra
+            </th>
+
+            <th>Giờ nhận</th><th>Thời lượng</th><th>Thang đo</th>
+            <th>
+              Loại sự kiện
             </th>
 
             <th>
-              Type
-            </th>
-
-            <th>
-              Level
+              Mức
             </th>
 
             <th>
@@ -96,11 +79,11 @@ function EventTable({
             </th>
 
             <th>
-              Angle
+              Góc nghiêng
             </th>
 
             <th>
-              Vibration
+              Mức rung
             </th>
 
           </tr>
@@ -119,16 +102,19 @@ function EventTable({
 
                   <td>
                     {
-                      formatEventTime(
+                      formatOccurredAt(
                         event
                       )
                     }
                   </td>
 
+                  <td>{formatReceivedAt(event)}</td>
+                  <td>{event.durationMs == null ? "--" : `${event.durationMs} ms`}</td>
+                  <td>{event.saturated == null ? "--" : event.saturated ? "Chạm giới hạn đo" : "Trong thang đo"}</td>
                   <td>
 
                     <strong>
-                      {event.type}
+                      {labelVi(event.type)}
                     </strong>
 
                   </td>
@@ -144,8 +130,7 @@ function EventTable({
                     >
 
                       {
-                        event.level ||
-                        "--"
+                        labelVi(event.level)
                       }
 
                     </span>

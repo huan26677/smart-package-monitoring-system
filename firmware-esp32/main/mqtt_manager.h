@@ -16,6 +16,7 @@ esp_err_t mqtt_manager_init(
 
 
 bool mqtt_manager_is_connected(void);
+int mqtt_manager_publish_motion(const char *payload,int length,bool capture);
 
 
 esp_err_t mqtt_manager_publish_telemetry(

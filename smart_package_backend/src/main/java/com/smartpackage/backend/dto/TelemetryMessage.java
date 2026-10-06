@@ -13,7 +13,9 @@ public record TelemetryMessage(
 
         String state,
 
-        int rssi
+        int rssi,
+        Integer pendingEvents,
+        Long rejectedEvents
 
 ) {
 }

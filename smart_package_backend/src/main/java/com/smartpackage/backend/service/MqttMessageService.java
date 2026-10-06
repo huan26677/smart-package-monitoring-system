@@ -1,362 +1,70 @@
 package com.smartpackage.backend.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
+import tools.jackson.databind.json.JsonMapper;
 import com.smartpackage.backend.dto.LocationScanMessage;
 import com.smartpackage.backend.dto.PackageEventMessage;
 import com.smartpackage.backend.dto.TelemetryMessage;
 
-import tools.jackson.databind.json.JsonMapper;
-
-
 @Service
 public class MqttMessageService {
-
-
+    private static final Logger logger = LoggerFactory.getLogger(MqttMessageService.class);
     private final JsonMapper jsonMapper;
+    private final MqttPersistenceService persistence;
+    private final WifiAnchorService anchors;
 
-    private final MqttPersistenceService
-        mqttPersistenceService;
+    public record EventReceipt(String deviceId, long eventId) {}
 
-    private final WifiAnchorService
-        wifiAnchorService;
+    public MqttMessageService(JsonMapper jsonMapper, MqttPersistenceService persistence,
+            WifiAnchorService anchors) {
+        this.jsonMapper = jsonMapper;
+        this.persistence = persistence;
+        this.anchors = anchors;
+    }
 
-    public MqttMessageService(
-
-        JsonMapper jsonMapper,
-
-        MqttPersistenceService
-                mqttPersistenceService,
-        WifiAnchorService
-                wifiAnchorService
-
-     ) {
-
-        this.jsonMapper =
-                jsonMapper;
-
-        this.mqttPersistenceService =
-                mqttPersistenceService;
-        this.wifiAnchorService =
-                wifiAnchorService;
-     }
-
-
-    /* =====================================================
-     * HANDLE MQTT MESSAGE
-     * ===================================================== */
-
-    public void handle(
-            String topic,
-            String payload
-    ) {
-
+    public EventReceipt handle(String topic, String payload) {
         try {
-
-            if (
-                    topic.endsWith(
-                            "/telemetry"
-                    )
-            ) {
-
-                handleTelemetry(
-                        payload
-                );
-
+            if (topic.endsWith("/telemetry")) {
+                TelemetryMessage data = jsonMapper.readValue(payload, TelemetryMessage.class);
+                validateDevice(topic, data.deviceId(), "telemetry");
+                persistence.saveTelemetry(data);
+            } else if (topic.endsWith("/event")) {
+                PackageEventMessage data = jsonMapper.readValue(payload, PackageEventMessage.class);
+                validateDevice(topic, data.deviceId(), "event");
+                if (data.eventId() <= 0 || data.timestamp() < 0 || data.uptimeMs() < 0
+                        || !Double.isFinite(data.g()) || data.g() < 0
+                        || !Double.isFinite(data.angle()) || !Double.isFinite(data.vibration())
+                        || (data.durationMs() != null && data.durationMs() < 0)
+                        || data.type() == null || !java.util.Set.of("IMPACT", "DROP", "FREE_FALL",
+                                "TILT", "FLIP", "VIBRATION").contains(data.type())
+                        || data.level() == null || !java.util.Set.of("NONE", "LIGHT", "MEDIUM",
+                                "STRONG").contains(data.level())) {
+                    throw new IllegalArgumentException("Invalid event measurement");
+                }
+                // This proxied transaction returns only after commit. Duplicates also get receipts.
+                boolean saved = persistence.saveEvent(data);
+                logger.info("Event {} / {}: {}", data.deviceId(), data.eventId(),
+                        saved ? "saved" : "already saved");
+                return new EventReceipt(data.deviceId(), data.eventId());
+            } else if (topic.endsWith("/location-scan")) {
+                LocationScanMessage data = jsonMapper.readValue(payload, LocationScanMessage.class);
+                validateDevice(topic, data.deviceId(), "location-scan");
+                Long scanId = persistence.saveLocationScan(data);
+                anchors.resolveAndStore(scanId, data.wifiAccessPoints());
             }
-
-            else if (
-                    topic.endsWith(
-                            "/event"
-                    )
-            ) {
-
-                handleEvent(
-                        payload
-                );
-
-            }
-
-            else if (
-                    topic.endsWith(
-                            "/location-scan"
-                    )
-            ) {
-
-                handleLocationScan(
-                        payload
-                );
-
-            }
-
-            else {
-
-                System.out.println(
-                        "[MQTT] Unknown topic: "
-                                + topic
-                );
-
-            }
-
+        } catch (Exception exception) {
+            // No receipt on parse/validation/database failure: device keeps its durable copy.
+            logger.error("MQTT processing failed for {}", topic, exception);
         }
-        catch (Exception e) {
-
-            System.err.println(
-                    "[MQTT] JSON parse error"
-            );
-
-
-            System.err.println(
-                    "[MQTT] Topic: "
-                            + topic
-            );
-
-
-            System.err.println(
-                    "[MQTT] Error: "
-                            + e.getMessage()
-            );
-
-        }
+        return null;
     }
 
-
-    /* =====================================================
-     * TELEMETRY
-     * ===================================================== */
-
-    private void handleTelemetry(
-            String payload
-    ) throws Exception {
-
-        TelemetryMessage data =
-                jsonMapper.readValue(
-                        payload,
-                        TelemetryMessage.class
-                );
-
-        mqttPersistenceService
-                .saveTelemetry(
-                        data
-                );
-
-        System.out.println(
-                "[PARSED TELEMETRY]"
-        );
-
-
-        System.out.println(
-                "Device    : "
-                        + data.deviceId()
-        );
-
-
-        System.out.println(
-                "G         : "
-                        + data.g()
-        );
-
-
-        System.out.println(
-                "Angle     : "
-                        + data.angle()
-        );
-
-
-        System.out.println(
-                "Vibration : "
-                        + data.vibration()
-        );
-
-
-        System.out.println(
-                "State     : "
-                        + data.state()
-        );
-
-
-        System.out.println(
-                "WiFi RSSI : "
-                        + data.rssi()
-                        + " dBm"
-        );
-    }
-
-
-    /* =====================================================
-     * EVENT
-     * ===================================================== */
-
-    private void handleEvent(
-            String payload
-    ) throws Exception {
-
-        PackageEventMessage data =
-                jsonMapper.readValue(
-                        payload,
-                        PackageEventMessage.class
-                );
-
-        boolean eventSaved =
-                mqttPersistenceService
-                        .saveEvent(
-                                data
-                        );
-
-        System.out.println(
-                "[PARSED EVENT]"
-        );
-
-        System.out.println(
-                "Database  : "
-                        + (
-                                eventSaved
-                                        ? "SAVED"
-                                        : "DUPLICATE - SKIPPED"
-                        )
-        );
-
-        System.out.println(
-                "Device    : "
-                        + data.deviceId()
-        );
-
-
-        System.out.println(
-                "Event ID  : "
-                        + data.eventId()
-        );
-
-
-        System.out.println(
-                "Type      : "
-                        + data.type()
-        );
-
-
-        System.out.println(
-                "Level     : "
-                        + data.level()
-        );
-
-
-        System.out.println(
-                "G         : "
-                        + data.g()
-        );
-
-
-        System.out.println(
-                "Angle     : "
-                        + data.angle()
-        );
-
-
-        System.out.println(
-                "Vibration : "
-                        + data.vibration()
-        );
-
-
-        System.out.println(
-                "Timestamp : "
-                        + data.timestamp()
-        );
-
-
-        System.out.println(
-                "Time      : "
-                        + data.timeText()
-        );
-    }
-
-
-    /* =====================================================
-     * LOCATION SCAN
-     * ===================================================== */
-
-    private void handleLocationScan(
-            String payload
-    ) throws Exception {
-
-        LocationScanMessage data =
-                jsonMapper.readValue(
-                        payload,
-                        LocationScanMessage.class
-                );
-
-        Long locationScanId =
-                mqttPersistenceService
-                        .saveLocationScan(
-                                data
-                        );
-
-
-                wifiAnchorService
-                        .resolveAndStore(
-
-                                locationScanId,
-
-                                data.wifiAccessPoints()
-                        );
-
-        int accessPointCount = 0;
-
-
-        if (
-                data.wifiAccessPoints()
-                        != null
-        ) {
-
-            accessPointCount =
-                    data
-                            .wifiAccessPoints()
-                            .size();
-
-        }
-
-
-        System.out.println(
-                "[PARSED LOCATION SCAN]"
-        );
-
-
-        System.out.println(
-                "Device    : "
-                        + data.deviceId()
-        );
-
-
-        System.out.println(
-                "Timestamp : "
-                        + data.timestamp()
-        );
-
-
-        System.out.println(
-                "WiFi APs  : "
-                        + accessPointCount
-        );
-
-
-        if (
-                data.wifiAccessPoints()
-                        != null
-        ) {
-
-            data
-                    .wifiAccessPoints()
-                    .forEach(
-                            ap ->
-                                    System.out.println(
-                                            "  "
-                                            + ap.bssid()
-                                            + " | "
-                                            + ap.rssi()
-                                            + " dBm"
-                                    )
-                    );
-
+    private void validateDevice(String topic, String deviceId, String kind) {
+        if (deviceId == null || !deviceId.matches("[A-Za-z0-9_-]{1,64}")
+                || !topic.equals("smart-package/" + deviceId + "/" + kind)) {
+            throw new IllegalArgumentException("Device ID does not match MQTT topic");
         }
     }
 }

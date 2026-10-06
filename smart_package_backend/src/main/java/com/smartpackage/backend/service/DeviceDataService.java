@@ -481,7 +481,9 @@ public class DeviceDataService {
 
                 entity.getWifiRssi(),
 
-                entity.getReceivedAt()
+                entity.getReceivedAt(),
+                entity.getPendingEvents(),
+                entity.getRejectedEvents()
         );
     }
 
@@ -517,7 +519,9 @@ public class DeviceDataService {
 
                 entity.getTimeText(),
 
-                entity.getReceivedAt()
+                entity.getReceivedAt(),
+                entity.getDurationMs(),
+                entity.getSaturated()
         );
     }
 

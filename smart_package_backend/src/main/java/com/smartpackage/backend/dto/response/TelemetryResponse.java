@@ -19,7 +19,9 @@ public record TelemetryResponse(
 
         int wifiRssi,
 
-        Instant receivedAt
+        Instant receivedAt,
+        Integer pendingEvents,
+        Long rejectedEvents
 
 ) {
 }

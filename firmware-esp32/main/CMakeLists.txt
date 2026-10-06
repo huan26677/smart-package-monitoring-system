@@ -3,6 +3,7 @@ idf_component_register(
         "main.c"
         "mpu6050.c"
         "impact_detector.c"
+        "motion_collector.c"
         "event_log.c"
         "lcd1602.c"
         "buzzer.c"
@@ -27,4 +28,5 @@ idf_component_register(
         esp_netif
         esp_event
         mqtt
+        json
 )

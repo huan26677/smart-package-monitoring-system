@@ -141,6 +141,23 @@ function MapAutoFit({
   return null;
 }
 
+function MapResize() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    let frame;
+    const observer = new ResizeObserver(() => {
+      if (container.clientWidth > 0 && container.clientHeight > 0) {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+      }
+    });
+    observer.observe(container);
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [map]);
+  return null;
+}
+
 function LocationMap({
   anchors,
   currentLocation,
@@ -203,7 +220,7 @@ function LocationMap({
     return (
       <div className="empty">
 
-        Chưa có tọa độ Anchor
+        Chưa có tọa độ mốc Wi-Fi
         để hiển thị bản đồ.
 
       </div>
@@ -236,6 +253,8 @@ function LocationMap({
         }
 
       />
+
+      <MapResize />
 
       <MapAutoFit
         points={
@@ -301,7 +320,7 @@ function LocationMap({
 
                 <br />
 
-                Radius:
+                Bán kính:
                 {" "}
                 {anchor.radiusMeters} m
 
@@ -349,7 +368,7 @@ function LocationMap({
               {
                 currentLocation
                   .locationLabel ??
-                "Unknown"
+                "Chưa xác định"
               }
 
               <br />

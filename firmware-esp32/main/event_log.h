@@ -8,7 +8,7 @@
 #include "esp_err.h"
 #include "impact_detector.h"
 
-#define EVENT_LOG_MAX_EVENTS 50
+#define EVENT_LOG_MAX_EVENTS 128
 
 
 typedef struct
@@ -30,6 +30,9 @@ typedef struct
     float vibration_rms;
 
     uint8_t synced;
+    uint32_t duration_ms;
+    uint8_t saturated;
+    uint8_t measurement_version;
 
 } event_record_t;
 
@@ -41,12 +44,16 @@ esp_err_t event_log_add(
     impact_level_t impact_level,
     float g_force,
     float relative_angle,
-    float vibration_rms
+    float vibration_rms,
+    uint32_t started_ms,
+    uint32_t duration_ms,
+    bool saturated
 );
 
 void event_log_print_all(void);
 
 size_t event_log_count(void);
+size_t event_log_rejected_count(void);
 
 esp_err_t event_log_clear(void);
 

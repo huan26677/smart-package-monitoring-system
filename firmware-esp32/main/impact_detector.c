@@ -36,6 +36,18 @@
 #define VIBRATION_RMS_THRESHOLD      0.12f
 
 #define DROP_WAIT_SAMPLES            100
+#define IMPACT_RELEASE_G             1.8f
+#define IMPACT_QUIET_MS              80
+#define IMPACT_MAX_MS                1000
+
+static bool impact_active;
+static bool impact_was_drop;
+static bool impact_saturated;
+static float impact_peak;
+static float impact_peak_angle;
+static float impact_peak_vibration;
+static uint32_t impact_started_ms;
+static uint32_t impact_last_high_ms;
 
 /* =========================================================
  * VIBRATION
@@ -159,6 +171,9 @@ void impact_detector_init(void)
 
     vibration_index = 0;
     vibration_count = 0;
+    impact_active = false;
+    impact_peak = 0;
+    impact_saturated = false;
 
     free_fall_counter = 0;
     free_fall_recent = 0;
@@ -434,7 +449,8 @@ static float calculate_relative_angle(
 
 void impact_detector_update(
     const mpu6050_data_t *sensor,
-    impact_result_t *result
+    impact_result_t *result,
+    uint32_t now_ms
 )
 {
     /* -----------------------------------------------------
@@ -736,28 +752,54 @@ void impact_detector_update(
             IMPACT_LEVEL_NONE;
     }
 
-    /* =====================================================
-     * NEW EVENT
-     * ===================================================== */
-
+    // Impacts are recorded after a quiet interval, using the maximum of the episode.
     result->new_event = false;
-
-
-    if (
-        new_state != last_state &&
-        new_state != PACKAGE_NORMAL &&
-        new_state != PACKAGE_CALIBRATING
-    )
-    {
-        result->new_event =
-            true;
+    if (impact && !impact_active) {
+        impact_active = true;
+        impact_was_drop = new_state == PACKAGE_DROP;
+        impact_peak = 0;
+        impact_saturated = false;
+        impact_started_ms = now_ms;
+        impact_last_high_ms = now_ms;
     }
-
-
-    result->state =
-        new_state;
-
-
-    last_state =
-        new_state;
+    if (impact_active) {
+        if (sensor->total_g >= IMPACT_RELEASE_G) impact_last_high_ms = now_ms;
+        if (sensor->total_g > impact_peak) {
+            impact_peak = sensor->total_g;
+            impact_peak_angle = relative_angle;
+            impact_peak_vibration = vibration_rms;
+        }
+        impact_saturated |= fabsf(sensor->ax) >= 15.9f || fabsf(sensor->ay) >= 15.9f
+                || fabsf(sensor->az) >= 15.9f;
+        result->peak_g = impact_peak;
+        new_state = impact_was_drop ? PACKAGE_DROP : PACKAGE_IMPACT;
+        result->impact_level = classify_impact(impact_peak);
+        if (now_ms - impact_last_high_ms >= IMPACT_QUIET_MS
+                || now_ms - impact_started_ms >= IMPACT_MAX_MS) {
+            result->new_event = true;
+            result->event_type = new_state;
+            result->event_level = classify_impact(impact_peak);
+            result->event_peak_g = impact_peak;
+            result->event_angle = impact_peak_angle;
+            result->event_vibration = impact_peak_vibration;
+            result->event_started_ms = impact_started_ms;
+            result->event_duration_ms = impact_last_high_ms - impact_started_ms + 10;
+            result->event_saturated = impact_saturated;
+            impact_active = false;
+        }
+    } else if (new_state != last_state && new_state != PACKAGE_NORMAL
+            && new_state != PACKAGE_CALIBRATING && new_state != PACKAGE_IMPACT
+            && new_state != PACKAGE_DROP) {
+        result->new_event = true;
+        result->event_type = new_state;
+        result->event_level = IMPACT_LEVEL_NONE;
+        result->event_peak_g = sensor->total_g;
+        result->event_angle = relative_angle;
+        result->event_vibration = vibration_rms;
+        result->event_started_ms = now_ms;
+        result->event_duration_ms = 0;
+        result->event_saturated = false;
+    }
+    result->state = new_state;
+    last_state = new_state;
 }

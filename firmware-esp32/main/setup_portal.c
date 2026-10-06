@@ -135,7 +135,7 @@ static const char setup_html[] =
     "<meta name='viewport' "
     "content='width=device-width,initial-scale=1'>"
 
-    "<title>Smart Package Setup</title>"
+    "<title>Cấu hình giám sát kiện hàng</title>"
 
     "<style>"
     "body{"
@@ -188,27 +188,27 @@ static const char setup_html[] =
 
     "<div class='box'>"
 
-    "<h2>SMART PACKAGE</h2>"
+    "<h2>GIÁM SÁT KIỆN HÀNG</h2>"
 
     "<p>"
-    "Cau hinh ket noi cho thiet bi"
+    "Cấu hình kết nối cho thiết bị"
     "</p>"
 
     "<form method='POST' action='/save'>"
 
-    "<label>Wi-Fi SSID</label>"
+    "<label>Tên mạng Wi-Fi</label>"
     "<input "
     "name='ssid' "
     "maxlength='32' "
     "required>"
 
-    "<label>Wi-Fi Password</label>"
+    "<label>Mật khẩu Wi-Fi</label>"
     "<input "
     "name='password' "
     "type='password' "
     "maxlength='64'>"
 
-    "<label>MQTT Broker</label>"
+    "<label>Địa chỉ máy chủ MQTT</label>"
     "<input "
     "name='broker' "
     "maxlength='128' "
@@ -216,7 +216,7 @@ static const char setup_html[] =
     "required>"
 
     "<button type='submit'>"
-    "SAVE CONFIG"
+    "Lưu cấu hình"
     "</button>"
 
     "</form>"
@@ -551,16 +551,16 @@ static esp_err_t save_post_handler(
         "content='width=device-width,initial-scale=1'>"
         "</head>"
         "<body style='font-family:Arial;text-align:center;padding:30px;'>"
-        "<h2>CONFIG SAVED</h2>"
-        "<p>ESP32 dang khoi dong lai...</p>"
-        "<p>Ban co the roi khoi mang SMART_PACKAGE_SETUP.</p>"
+        "<h2>Đã lưu cấu hình</h2>"
+        "<p>ESP32 đang khởi động lại...</p>"
+        "<p>Bạn có thể rời khỏi mạng SMART_PACKAGE_SETUP.</p>"
         "</body>"
         "</html>";
 
 
     httpd_resp_set_type(
         req,
-        "text/html"
+        "text/html; charset=utf-8"
     );
 
 

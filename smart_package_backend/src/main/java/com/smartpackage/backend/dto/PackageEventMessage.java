@@ -21,7 +21,11 @@ public record PackageEventMessage(
 
         long timestamp,
 
-        String timeText
+        String timeText,
+
+        Long durationMs,
+
+        Boolean saturated
 
 ) {
 }

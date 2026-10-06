@@ -1,3 +1,10 @@
+import AuthGate from "./components/AuthGate";
+import CollapsibleSection from "./components/CollapsibleSection";
+import EventNotice from "./components/EventNotice";
+import EventStorageNotice from "./components/EventStorageNotice";
+import EventHistoryPanel from "./components/EventHistoryPanel";
+import AiPanel from "./components/AiPanel";
+import {labelVi} from "./services/labels";
 import {
   useCallback,
   useEffect,
@@ -6,8 +13,6 @@ import {
 
 import "./App.css";
 
-import EventTable
-  from "./components/EventTable";
 
 import LocationMap
   from "./components/LocationMap";
@@ -48,7 +53,7 @@ function getAlertInfo(
 
     return {
       className: "alert-offline",
-      title: "DEVICE OFFLINE",
+      title: "Thiết bị mất kết nối",
       text:
         "Không nhận được dữ liệu mới từ thiết bị."
     };
@@ -66,7 +71,7 @@ function getAlertInfo(
 
       return {
         className: "alert-danger",
-        title: "DROP DETECTED",
+        title: "Phát hiện rơi kiện hàng",
         text:
           "Phát hiện kiện hàng có dấu hiệu rơi."
       };
@@ -75,7 +80,7 @@ function getAlertInfo(
 
       return {
         className: "alert-danger",
-        title: "IMPACT DETECTED",
+        title: "Phát hiện va đập",
         text:
           "Phát hiện va đập kiện hàng."
       };
@@ -84,7 +89,7 @@ function getAlertInfo(
 
       return {
         className: "alert-danger",
-        title: "FREE FALL",
+        title: "Rơi tự do",
         text:
           "Thiết bị đang phát hiện trạng thái rơi tự do."
       };
@@ -93,7 +98,7 @@ function getAlertInfo(
 
       return {
         className: "alert-warning",
-        title: "PACKAGE FLIPPED",
+        title: "Kiện hàng bị lật",
         text:
           "Kiện hàng đã bị lật."
       };
@@ -102,7 +107,7 @@ function getAlertInfo(
 
       return {
         className: "alert-warning",
-        title: "PACKAGE TILTED",
+        title: "Kiện hàng bị nghiêng",
         text:
           "Kiện hàng đang bị nghiêng."
       };
@@ -111,7 +116,7 @@ function getAlertInfo(
 
       return {
         className: "alert-warning",
-        title: "VIBRATION",
+        title: "Rung lắc",
         text:
           "Phát hiện rung động bất thường."
       };
@@ -120,7 +125,7 @@ function getAlertInfo(
 
       return {
         className: "alert-safe",
-        title: "NORMAL",
+        title: "Bình thường",
         text:
           "Trạng thái kiện hàng bình thường."
       };
@@ -129,7 +134,7 @@ function getAlertInfo(
 
       return {
         className: "alert-unknown",
-        title: state,
+        title: labelVi(state),
         text:
           "Chưa xác định trạng thái kiện hàng."
       };
@@ -597,18 +602,18 @@ function App() {
         <div>
 
           <h1>
-            Smart Package Monitoring
+            Giám sát va đập kiện hàng
           </h1>
 
           <p>
-            ESP32-S3 package monitoring dashboard
+            Theo dõi kiện hàng bằng ESP32-S3
           </p>
 
         </div>
 
         <div className="header-refresh">
 
-          Auto refresh:
+          Tự cập nhật:
           {" "}
           {AUTO_REFRESH_MS / 1000}s
 
@@ -653,7 +658,8 @@ function App() {
             onClick={
               () =>
                 loadDeviceData(
-                  selectedDeviceId
+                  selectedDeviceId,
+                  true
                 )
             }
             disabled={
@@ -661,7 +667,7 @@ function App() {
             }
           >
 
-            Refresh
+            Làm mới
 
           </button>
 
@@ -669,7 +675,7 @@ function App() {
             refreshing && (
 
               <span className="refreshing">
-                Updating...
+                Đang cập nhật...
               </span>
             )
           }
@@ -687,8 +693,8 @@ function App() {
 
                 {
                   dashboard.online
-                    ? "ONLINE"
-                    : "OFFLINE"
+                    ? "Đã kết nối"
+                    : "Mất kết nối"
                 }
 
               </span>
@@ -710,7 +716,7 @@ function App() {
           loading ? (
 
             <div className="loading">
-              Loading dashboard...
+              Đang tải dữ liệu...
             </div>
 
           ) : dashboard ? (
@@ -738,12 +744,33 @@ function App() {
                 )
               }
 
+              <CollapsibleSection id="notices" title="Thông báo và cảnh báo" eager
+                description="Cảnh báo đã ghi nhận và tình trạng đồng bộ sự kiện"
+                badge={telemetry?.pendingEvents > 0
+                  ? `${telemetry.pendingEvents} chờ đồng bộ`
+                  : `${eventHistory.filter(event => ["IMPACT", "DROP"].includes(event.type)).length} va đập/rơi gần đây`}
+                tone={telemetry?.pendingEvents > 0 ? "warning" : "neutral"}>
+                {telemetry && <EventStorageNotice
+                  key={`storage:${selectedDeviceId}`}
+                  deviceId={selectedDeviceId}
+                  telemetry={telemetry}
+                  online={dashboard.online}
+                />}
+                <EventNotice key={`notice:${selectedDeviceId}`} deviceId={selectedDeviceId} events={eventHistory} />
+                {!(telemetry?.pendingEvents > 0) && !(telemetry?.rejectedEvents > 0)
+                  && !eventHistory.some(event => ["IMPACT", "DROP"].includes(event.type))
+                  && <p className="section-note">Chưa có cảnh báo được ghi nhận.</p>}
+              </CollapsibleSection>
+
+              <CollapsibleSection id="overview" title="Chỉ số hiện tại" defaultOpen
+                description="Thông số mới nhất từ ESP32"
+                badge={labelVi(telemetry?.state)} tone={telemetry?.state === "NORMAL" ? "safe" : "warning"}>
               <div className="grid">
 
                 <section className="card">
 
                   <h2>
-                    Total G
+                    Gia tốc tổng hợp
                   </h2>
 
                   <div className="value">
@@ -758,11 +785,10 @@ function App() {
 
                   <div className="meta">
 
-                    State:
+                    Trạng thái:
                     {" "}
                     {
-                      telemetry?.state ??
-                      "--"
+                      labelVi(telemetry?.state)
                     }
 
                   </div>
@@ -772,7 +798,7 @@ function App() {
                 <section className="card">
 
                   <h2>
-                    Angle
+                    Góc nghiêng
                   </h2>
 
                   <div className="value">
@@ -787,7 +813,7 @@ function App() {
 
                   <div className="meta">
 
-                    Vibration:
+                    Mức rung:
                     {" "}
                     {
                       formatNumber(
@@ -803,7 +829,7 @@ function App() {
                 <section className="card">
 
                   <h2>
-                    Wi-Fi RSSI
+                    Cường độ Wi-Fi
                   </h2>
 
                   <div className="value">
@@ -817,12 +843,12 @@ function App() {
 
                   <div className="meta">
 
-                    Last seen:
+                    Nhận dữ liệu cách đây:
                     {" "}
                     {
                       dashboard
                         .secondsSinceLastSeen
-                    }s ago
+                    } giây
 
                   </div>
 
@@ -831,7 +857,7 @@ function App() {
                 <section className="card">
 
                   <h2>
-                    Latest Event
+                    Sự kiện gần nhất
                   </h2>
 
                   {
@@ -842,17 +868,17 @@ function App() {
                         <div className="value">
 
                           {
-                            latestEvent.type
+                            labelVi(latestEvent.type)
                           }
 
                         </div>
 
                         <div className="meta">
 
-                          Level:
+                          Mức:
                           {" "}
                           {
-                            latestEvent.level
+                            labelVi(latestEvent.level)
                           }
 
                         </div>
@@ -874,7 +900,7 @@ function App() {
                     ) : (
 
                       <div className="empty">
-                        No event
+                        Chưa có sự kiện
                       </div>
                     )
                   }
@@ -884,7 +910,7 @@ function App() {
                 <section className="card">
 
                   <h2>
-                    Current Location
+                    Vị trí hiện tại
                   </h2>
 
                   {
@@ -897,26 +923,24 @@ function App() {
                           {
                             location
                               .locationLabel ??
-                            "Unknown"
+                            "Chưa xác định"
                           }
 
                         </div>
 
                         <div className="meta">
 
-                          Status:
+                          Trạng thái:
                           {" "}
                           {
-                            location
-                              .locationStatus ??
-                            "--"
+                            labelVi(location.locationStatus)
                           }
 
                         </div>
 
                         <div className="meta">
 
-                          Anchor RSSI:
+                          Cường độ Wi-Fi tại mốc:
                           {" "}
                           {
                             location
@@ -931,7 +955,7 @@ function App() {
                     ) : (
 
                       <div className="empty">
-                        No location scan
+                        Chưa có lượt quét vị trí
                       </div>
                     )
                   }
@@ -939,177 +963,44 @@ function App() {
                 </section>
 
               </div>
+              </CollapsibleSection>
 
-              <section className="card chart-card">
+              <CollapsibleSection id="sensors" title="Lịch sử cảm biến"
+                description="Biểu đồ gia tốc, góc nghiêng và mức rung"
+                badge={`${telemetryHistory.length} mẫu gần nhất`}>
+                <TelemetryChart data={telemetryHistory} />
+              </CollapsibleSection>
 
-                <div className="section-heading">
+              <CollapsibleSection id="events" title="Lịch sử sự kiện"
+                description="Tra cứu, lọc và xuất dữ liệu sự kiện">
+                <EventHistoryPanel key={`history:${selectedDeviceId}`} deviceId={selectedDeviceId} />
+              </CollapsibleSection>
 
-                  <div>
+              <CollapsibleSection id="ai" title="AI phân biệt va đập"
+                description="Thu dữ liệu, gắn nhãn và quản lý mô hình">
+                <AiPanel key={`ai:${selectedDeviceId}`} deviceId={selectedDeviceId} />
+              </CollapsibleSection>
 
-                    <h2>
-                      Telemetry History
-                    </h2>
+              <CollapsibleSection id="map" title="Bản đồ vị trí"
+                description="Vị trí ước tính theo mốc Wi-Fi"
+                badge={location?.locationLabel || "Chưa xác định"}>
+                <p className="section-note">Định vị theo mốc Wi-Fi, không phải GPS chính xác.</p>
+                <LocationMap anchors={wifiAnchors} currentLocation={location} locationHistory={locationHistory} />
+              </CollapsibleSection>
 
-                    <div className="meta">
-                      Latest 60 samples
-                    </div>
+              <CollapsibleSection id="locations" title="Lịch sử vị trí"
+                description="Các lần quét và nhận diện vị trí gần đây"
+                badge={`${locationHistory.length} lượt quét`}>
+                <LocationHistoryTable scans={locationHistory} />
+              </CollapsibleSection>
 
-                  </div>
-
-                </div>
-
-                <TelemetryChart
-                  data={
-                    telemetryHistory
-                  }
-                />
-
-              </section>
-
-              <section className="card event-card">
-
-                <div className="section-heading">
-
-                  <div>
-
-                    <h2>
-                      Package Event History
-                    </h2>
-
-                    <div className="meta">
-                      Latest 20 events
-                    </div>
-
-                  </div>
-
-                </div>
-
-                <EventTable
-                  events={
-                    eventHistory
-                  }
-                />
-
-              </section>
-
-              <section className="card location-card">
-
-                <div className="section-heading">
-
-                  <div>
-
-                    <h2>
-                      Package Location Map
-                    </h2>
-
-                    <div className="meta">
-
-                      Wi-Fi Anchor location,
-                      không phải GPS chính xác.
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                <LocationMap
-
-                  anchors={
-                    wifiAnchors
-                  }
-
-                  currentLocation={
-                    location
-                  }
-
-                  locationHistory={
-                    locationHistory
-                  }
-
-                />
-
-              </section>
-
-              <section className="card location-history-card">
-
-                <div className="section-heading">
-
-                  <div>
-
-                    <h2>
-                      Location History
-                    </h2>
-
-                    <div className="meta">
-
-                      50 Wi-Fi location scans
-                      gần nhất.
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                <LocationHistoryTable
-
-                  scans={
-                    locationHistory
-                  }
-
-                />
-
-              </section>
-
-              <section className="card anchor-card">
-
-                <div className="section-heading">
-
-                  <div>
-
-                    <h2>
-                      Wi-Fi Anchor Management
-                    </h2>
-
-                    <div className="meta">
-
-                      Đăng ký BSSID với
-                      tên khu vực và tọa độ.
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                <WifiAnchorPanel
-
-                  anchors={
-                    wifiAnchors
-                  }
-
-                  wifiAccessPoints={
-                    latestLocationScan
-                      ?.wifiAccessPoints ??
-                    []
-                  }
-
-                  busy={
-                    anchorBusy
-                  }
-
-                  onSave={
-                    handleSaveAnchor
-                  }
-
-                  onDelete={
-                    handleDeleteAnchor
-                  }
-
-                />
-
-              </section>
+              <CollapsibleSection id="wifi" title="Quản lý mốc Wi-Fi"
+                description="Đăng ký khu vực, tọa độ và phạm vi nhận diện"
+                badge={`${wifiAnchors.length} mốc đã lưu`}>
+                <WifiAnchorPanel anchors={wifiAnchors}
+                  wifiAccessPoints={latestLocationScan?.wifiAccessPoints ?? []}
+                  busy={anchorBusy} onSave={handleSaveAnchor} onDelete={handleDeleteAnchor} />
+              </CollapsibleSection>
 
             </>
 
@@ -1119,8 +1010,8 @@ function App() {
 
               {
                 devices.length === 0
-                  ? "No device found"
-                  : "No device data"
+                  ? "Chưa tìm thấy thiết bị"
+                  : "Chưa có dữ liệu thiết bị"
               }
 
             </div>
@@ -1133,4 +1024,6 @@ function App() {
   );
 }
 
-export default App;
+export default function AuthenticatedApp() {
+  return <AuthGate><App /></AuthGate>;
+}

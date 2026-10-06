@@ -1,0 +1,1 @@
+run_id,trial,observed_at,scenario,ground_truth,package_mass_kg,drop_height_cm,orientation,surface,detected_event_ids,peak_g,duration_ms,saturated,pending_before,pending_after,rejected_events,tp,fp,fn,notes

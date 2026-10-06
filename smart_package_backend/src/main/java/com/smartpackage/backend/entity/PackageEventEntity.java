@@ -121,6 +121,20 @@ public class PackageEventEntity {
     private Instant receivedAt;
 
 
+    @Column(name = "duration_ms")
+    private Long durationMs;
+
+    @Column(name = "sensor_saturated")
+    private Boolean saturated;
+
+    public void setMeasurementDetails(Long durationMs, Boolean saturated) {
+        this.durationMs = durationMs;
+        this.saturated = saturated;
+    }
+
+    public Long getDurationMs() { return durationMs; }
+    public Boolean getSaturated() { return saturated; }
+
     protected PackageEventEntity() {
     }
 

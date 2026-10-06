@@ -80,6 +80,16 @@ public class TelemetryEntity {
     private Instant receivedAt;
 
 
+    @Column(name="pending_events")
+    private Integer pendingEvents;
+    @Column(name="rejected_events")
+    private Long rejectedEvents;
+    public void setQueueStatus(Integer pendingEvents, Long rejectedEvents) {
+        this.pendingEvents = pendingEvents; this.rejectedEvents = rejectedEvents;
+    }
+    public Integer getPendingEvents() { return pendingEvents; }
+    public Long getRejectedEvents() { return rejectedEvents; }
+
     protected TelemetryEntity() {
     }
 

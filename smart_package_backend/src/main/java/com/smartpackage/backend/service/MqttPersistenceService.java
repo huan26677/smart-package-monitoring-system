@@ -140,6 +140,8 @@ public class MqttPersistenceService {
                 );
 
 
+        telemetry.setQueueStatus(data.pendingEvents(), data.rejectedEvents());
+
         telemetryRepository.save(
                 telemetry
         );
@@ -201,6 +203,8 @@ public class MqttPersistenceService {
                         data.timeText()
                 );
 
+
+        event.setMeasurementDetails(data.durationMs(), data.saturated());
 
         packageEventRepository.save(
                 event

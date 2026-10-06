@@ -1,3 +1,4 @@
+import {labelVi} from "../services/labels";
 function formatTime(
   value
 ) {
@@ -83,15 +84,15 @@ function LocationHistoryTable({
           <tr>
 
             <th>
-              Time
+              Thời gian
             </th>
 
             <th>
-              Status
+              Trạng thái
             </th>
 
             <th>
-              Location
+              Vị trí
             </th>
 
             <th>
@@ -103,11 +104,11 @@ function LocationHistoryTable({
             </th>
 
             <th>
-              Latitude
+              Vĩ độ
             </th>
 
             <th>
-              Longitude
+              Kinh độ
             </th>
 
           </tr>
@@ -145,8 +146,7 @@ function LocationHistoryTable({
                     >
 
                       {
-                        scan.locationStatus ??
-                        "--"
+                        labelVi(scan.locationStatus)
                       }
 
                     </span>
