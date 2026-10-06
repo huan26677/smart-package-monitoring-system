@@ -31,9 +31,20 @@ Kết quả mong đợi:
 
 ### MQTT recovery tests
 
-`MqttSubscriberTests` kiểm tra kết nối thất bại lần đầu, kết nối lại và đăng ký lại topic sau khi mất kết nối, cùng việc thử lại khi đăng ký topic thất bại. Các test dùng MQTT client giả lập, không cần broker thật.
+`MqttSubscriberTests` kiểm tra kết nối thất bại lần đầu, giữ tài khoản/mật khẩu khi kết nối lại và đăng ký lại topic sau mất kết nối, thử lại khi đăng ký topic thất bại, và từ chối cấu hình có mật khẩu nhưng thiếu tài khoản. Các test dùng MQTT client giả lập, không cần broker thật; kết nối không xác thực vẫn được kiểm tra khi chạy ngoài Compose.
 
-`MqttMessageServiceTests` kiểm tra xác nhận sau lưu thành công, xác nhận bản ghi trùng, không xác nhận khi lưu lỗi, từ chối topic/đo không hợp lệ và tương thích JSON của firmware cũ. Tổng kiểm thử backend hiện tại: 28 unit test (gồm 12 kiểm thử AI).
+`MqttMessageServiceTests` kiểm tra xác nhận sau lưu thành công, xác nhận bản ghi trùng, không xác nhận khi lưu lỗi, từ chối topic/đo không hợp lệ và tương thích JSON của firmware cũ. Tổng kiểm thử backend hiện tại: 29 unit test (gồm 12 kiểm thử AI).
+
+## Sửa lỗi xác thực MQTT của backend ngày 06/10/2026
+
+Nguyên nhân xác nhận: EMQX 6.3.1 yêu cầu xác thực tại TCP 1883 nhưng backend chưa gửi tài khoản. Log liên tục báo `Not authorized to connect`, MQTT health trả 503, PostgreSQL health vẫn OK. Telemetry dừng lưu lúc 15:18:32; ESP32 vẫn kết nối WSS và broker nhận dữ liệu nhưng không có backend đăng ký topic. Dockerfile cũ chép `emqx.yaml`, không nạp cấu hình HOCON cho bản EMQX đang chạy.
+
+- Backend nhận tài khoản/mật khẩu qua `MQTT_USERNAME`/`MQTT_PASSWORD`, gửi lại khi kết nối lại. Tạo tài khoản `smart-package-backend`, không có quyền superuser; kiểm tra CONNACK thành công và SUBACK cho cả bốn topic. Mật khẩu ngẫu nhiên chỉ lưu trong `.env` được Git bỏ qua.
+- Dùng `base.hocon`, giữ xác thực trên TCP/WebSocket, cố định EMQX 6.3.1 và giữ volume dữ liệu. Xuất bản sao lưu EMQX trước thay đổi, sao lưu `.env`; các bản sao nằm trong `firmware-esp32/build/backups/mqtt-auth-20261006/`, được Git bỏ qua.
+- 29 unit test backend đạt; ESLint và production build frontend đạt. Build và chạy lại EMQX/backend/web thành công; database và MQTT health OK. Không nạp lại hoặc xóa NVS của ESP32.
+- Chrome với thiết bị thật: telemetry tăng từ 40611 lên 40614, `pendingEvents=0`, giữ bộ đếm lịch sử 277; phần AI có đoạn mới với nhịp hợp lệ. Các sự kiện đang chờ, gồm ID 1115–1118, được lưu vào PostgreSQL khi backend kết nối lại.
+- Khởi động lại broker: backend mất kết nối lúc 15:58:32 và tự kết nối, đăng ký lại bốn topic lúc 15:58:54; ESP32 cũng tự kết nối WSS, giữ ba topic. Sau đó Chrome xác nhận telemetry tăng từ 40759 lên 40762, số sự kiện chờ vẫn 0 và đoạn AI mới có nhịp hợp lệ.
+- Phản hồi chỉ được thay thế trong trình duyệt để kiểm tra giao diện: MQTT health 503 hiển thị lỗi máy chủ, MQTT khỏe nhưng ESP32 không có dữ liệu hiển thị mất kết nối thiết bị, lỗi cập nhật API đánh dấu dữ liệu đang giữ là cũ. Hiển thị thời điểm nhận cuối, dùng nhãn trung tính, phục hồi giao diện khi có dữ liệu mới. Màn hình 390 px không tràn ngang và không có lỗi JavaScript. Các phản hồi giả lập này không ghi dữ liệu lên server hay thay đổi nhãn huấn luyện.
 
 ## Firmware trên máy tính
 
@@ -184,3 +195,20 @@ Mô hình trên thiết bị thật vẫn chưa huấn luyện; các kiểm th�
 - Bản đồ điều chỉnh kích thước bằng ResizeObserver sau khi mở lại. Biểu đồ và bảng không làm tràn chiều ngang ở màn hình 375 px. Chỉ số trên màn hình lớn xếp thành một hàng năm ô.
 - Docker build đạt; ESLint của component CollapsibleSection đạt. Chrome đăng nhập thật kiểm tra tám mục, thao tác bàn phím, nhớ bố cục qua tải lại, giữ trường AI qua thu gọn/Làm mới, giữ bộ lọc sự kiện và biểu mẫu Wi-Fi, mở lại biểu đồ/bản đồ, tám mục trên điện thoại và không lỗi JavaScript. Không gửi yêu cầu ghi dữ liệu backend trong kiểm tra bố cục.
 - Ở viewport 1365 px, chiều cao mặc định khoảng 1275 px, so với 8690 px khi mở toàn bộ mục (cùng dữ liệu thử).
+
+## Script đóng gói và kiểm tra demo - 06/10/2026
+
+- Hai script dùng thư viện chuẩn Python: `Lenh/don_dep_dong_goi.py` và `Lenh/chay_demo.py`. Script dọn chỉ xóa danh sách thư mục có thể tạo lại, tạo bản sao lưu trước khi xóa và chép riêng `build/backups`; không xóa Docker volume. Chế độ xem trước trên dự án thật ước tính gần 596 MB, chưa xóa các thư mục nặng của dự án.
+- Kiểm thử riêng xác nhận giữ nguồn, `.env`, dữ liệu AI, bản sao lưu; lỗi sao lưu ngăn việc dọn; từ chối thoát khỏi thư mục dự án hoặc đi theo junction; xóa cache có junction bên trong không xóa dữ liệu ở đích. Các mật khẩu có `$`, dấu nháy, backslash, khoảng trắng và Unicode được kiểm tra qua Compose thật để giữ nguyên khi chuyển máy.
+- Đã chạy chức năng sao lưu thật và tự khôi phục lên PostgreSQL/EMQX riêng với dữ liệu trống. Có lịch sử telemetry/sự kiện, các lần thu/đoạn AI; tài khoản backend kết nối thành công sau nhập. Gọi lại bước chuẩn bị giữ dữ liệu đã có. Container kiểm tra được xóa sau khi hoàn tất; không bàn giao tunnel sang container thử.
+- Script demo được chạy ở cả chế độ kiểm tra và khởi động/build trên hệ thống hiện tại. Local đạt: database/MQTT OK, API dữ liệu yêu cầu đăng nhập, tài khoản dashboard đúng, telemetry ESP32 thật có ID tăng, pendingEvents=0 và đoạn AI mới hợp lệ. WSS public nhận telemetry thật. Kiểm tra không tạo lượt thu hoặc gắn nhãn AI.
+- Hostname web chuyển yêu cầu script sang Cloudflare Access. Script báo còn bước đăng nhập/kiểm tra trình duyệt, trả mã 2 và không coi web public đã được xác minh. `--khong-public` đạt mã 0 cho demo local. LCD/còi vẫn cần quan sát bằng thao tác thật; mô hình AI hiện chưa có được ghi rõ trong kết quả.
+- Báo cáo trong `demo-private/lenh/` không chứa mật khẩu. Chưa kiểm tra thực tế trên máy tính khác hoặc thử nhánh mở Docker Desktop khi Engine đang tắt.
+
+## Khôi phục trang cấu hình ESP32 sau khi chuyển thư mục - 06/10/2026
+
+- Kiểm tra bản chạy trên Desktop: Docker/database/backend hoạt động; tài khoản ESP32 được chấp nhận qua TCP và WSS. `/status` trên ESP32 cũ trả HTTP 500. Bản sao NVS đọc qua COM3 xác nhận namespace `app_config` còn Wi-Fi và cờ cấu hình, thiếu `mqtt_uri`, `mqtt_user`, `mqtt_pass`; kiểm tra CRC các trang NVS đạt. Không kết luận xóa Docker là thao tác đã làm mất các trường này.
+- Firmware đọc từng trường cho luồng khôi phục, giữ NVS, yêu cầu nhập lại mật khẩu khi bản ghi chưa đầy đủ. Trang hiển thị mã lỗi, tự thử lại khi phản hồi chậm/lỗi, cập nhật mã phiên và giữ nội dung đang nhập. Host tests bao phủ mất địa chỉ MQTT, thiếu mật khẩu, chuỗi quá dài, sai kiểu, lỗi truy cập bộ nhớ và khôi phục lưu cấu hình; các kiểm thử cảm biến/sự kiện/mạng đang có đều đạt.
+- Đã sao lưu ứng dụng, NVS và bảng phân vùng; chỉ nạp ứng dụng tại `0x10000` qua COM3, giữ nguyên bootloader/NVS/bảng phân vùng. Chrome trên ESP32 thật xác nhận cảnh báo khôi phục, mật khẩu không trả ra biểu mẫu, dữ liệu nhập sai bị từ chối và Wi-Fi/WSS hợp lệ lưu thành công. Sau khởi động lại, cấu hình đọc bình thường; lưu cùng mạng/tài khoản với hai ô mật khẩu trống giữ kết nối và cấu hình sau lần khởi động tiếp theo.
+- Bộ đếm số sự kiện tiếp theo trên thiết bị là 8 trong khi database đã có ID 1238. Lệnh bảo trì USB nâng lên 1239 khi MQTT chưa kết nối, giữ nguyên 7 bản ghi đang chờ. Kiểm thử xác nhận không hạ bộ đếm, lỗi ghi giữ số cũ và khởi động lại giữ số mới. Bảy bản ghi thật sau đó đã vào PostgreSQL, pendingEvents=0. Đồng hồ NTP đã đồng bộ; telemetry và đoạn AI có nhịp hợp lệ tiếp tục cập nhật.
+- Script kiểm tra từ thư mục Desktop đạt demo local và WSS public nhận telemetry thật. Web public có Cloudflare Access nên cần đăng nhập trình duyệt; kiểm tra bằng script không coi bước đó đã hoàn tất. Mô hình AI vẫn chưa được huấn luyện. Nguồn sửa đã đồng bộ về cả thư mục E: và Desktop; báo cáo và firmware trong `demo-private/config-repair-20261006/`.

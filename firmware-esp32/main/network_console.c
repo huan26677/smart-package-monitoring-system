@@ -7,6 +7,8 @@
 #include "event_log.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <errno.h>
 #include "cJSON.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
@@ -15,14 +17,24 @@
 /* USB maintenance commands never print credentials or erase event history. */
 static void command(const char *line) {
     if(!strcmp(line,"NETSTATUS")) {
-        printf("NETSTATUS wifi=%d mqtt=%d setup=%d pending=%u rejected=%u\n",
+        printf("NETSTATUS wifi=%d mqtt=%d setup=%d pending=%u rejected=%u next=%lu\n",
             wifi_manager_is_connected(),mqtt_manager_is_connected(),setup_portal_is_active(),
-            (unsigned)event_log_unsynced_count(),(unsigned)event_log_rejected_count());
+            (unsigned)event_log_unsynced_count(),(unsigned)event_log_rejected_count(),
+            (unsigned long)event_log_next_id());
         return;
     }
     if(!strcmp(line,"NETSETUP")) {
         esp_err_t ret=setup_portal_start();
         printf("NETSETUP result=%s\n",esp_err_to_name(ret));return;
+    }
+    if(!strncmp(line,"EVENTNEXT ",10)) {
+        char *end;errno=0;unsigned long minimum=strtoul(line+10,&end,10);
+        esp_err_t ret=ESP_ERR_INVALID_ARG;
+        if(line[10]>='0' && line[10]<='9' && end!=line+10 && !*end && !errno && minimum>0 && minimum<UINT32_MAX) {
+            ret=mqtt_manager_is_connected()?ESP_ERR_INVALID_STATE:event_log_advance_next_id((uint32_t)minimum);
+        }
+        printf("EVENTNEXT result=%s next=%lu\n",esp_err_to_name(ret),(unsigned long)event_log_next_id());
+        return;
     }
     if(strncmp(line,"NETCFG ",7)) return;
     cJSON *o=cJSON_Parse(line+7);

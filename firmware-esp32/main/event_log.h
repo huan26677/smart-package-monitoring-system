@@ -54,6 +54,9 @@ void event_log_print_all(void);
 
 size_t event_log_count(void);
 size_t event_log_rejected_count(void);
+uint32_t event_log_next_id(void);
+/* USB maintenance after a database restore: advance only, retain all records. */
+esp_err_t event_log_advance_next_id(uint32_t minimum);
 
 esp_err_t event_log_clear(void);
 

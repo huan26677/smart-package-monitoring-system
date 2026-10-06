@@ -11,6 +11,7 @@
 <h1>Cấu hình mạng</h1>
 <p>Giám sát va đập kiện hàng · ESP32-S3</p>
 <div class="status" aria-live="polite"><p id="wifi-status">Đang đọc trạng thái Wi-Fi…</p><p id="mqtt-status">Đang đọc trạng thái máy chủ…</p></div>
+<div id="config-warning" class="message" role="status" hidden></div>
 <p>Đổi mạng tại đây, không cần sửa code hoặc nạp lại firmware. Dùng Wi-Fi <strong>2,4 GHz</strong> hoặc điểm phát sóng điện thoại có Internet.</p>
 <form id="config-form" method="post" action="/save">
 <input type="hidden" name="token" id="token">
@@ -33,25 +34,43 @@
 </main>
 <script>
 const $=id=>document.getElementById(id);
-let initialized=false,savedSsid='',saving=false;
+let initialized=false,savedSsid='',saving=false,refreshing=false,statusError=false;
+const edited=new Set();
+$('config-form').addEventListener('input',e=>edited.add(e.target.id));
 function message(text,error=false){$('message').hidden=false;$('message').textContent=text;$('message').classList.toggle('error',error)}
-async function refresh(){
- if(saving)return;
+async function requestJson(url,options={}){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
  try{
-  const r=await fetch('/status',{cache:'no-store'});if(!r.ok)throw new Error('Không đọc được cấu hình. Hãy tải lại trang.');const c=await r.json();
+  const r=await fetch(url,{...options,signal:controller.signal});const c=await r.json();
+  if(!r.ok)throw new Error((c.message||'Thiết bị chưa xử lý được yêu cầu.')+(c.config_error?' ('+c.config_error+')':''));
+  return c;
+ }catch(e){if(e.name==='AbortError')throw new Error('ESP32 phản hồi chậm. Giữ kết nối SMART_PACKAGE_SETUP và thử lại.');throw e;}
+ finally{clearTimeout(timer);}
+}
+async function refresh(){
+ if(saving||refreshing)return;refreshing=true;
+ try{
+  const c=await requestJson('/status',{cache:'no-store'});
+  if(typeof c.token!=='string'||c.token.length!==32)throw new Error('Phiên cấu hình chưa sẵn sàng. Thiết bị sẽ tự thử lại.');
   $('wifi-status').textContent='Wi-Fi: '+(c.wifi_connected?'Đã kết nối':'Chưa kết nối');
   $('mqtt-status').textContent='Máy chủ MQTT: '+c.mqtt_status;
-  if(!initialized){$('ssid').value=c.ssid;$('broker').value=c.broker;$('mqtt-user').value=c.mqtt_user;$('token').value=c.token;savedSsid=c.ssid;
+  $('token').value=c.token;
+  $('config-warning').hidden=!c.config_recovery;
+  $('config-warning').textContent=c.config_warning?(c.config_warning+(c.config_error?' ('+c.config_error+')':'')):'';
+  if(statusError){$('message').hidden=true;statusError=false;}
+  if(!initialized){for(const [id,value] of [['ssid',c.ssid],['broker',c.broker],['mqtt-user',c.mqtt_user]])if(!edited.has(id))$(id).value=value;savedSsid=c.ssid;
    if(c.has_wifi_password)$('wifi-help').textContent='Đã có mật khẩu Wi-Fi. Giữ nguyên tên mạng và để trống để giữ mật khẩu. Đổi tên mạng thì nhập mật khẩu mới.';
    if(c.has_mqtt_password)$('mqtt-help').textContent='Đã có mật khẩu MQTT. Giữ nguyên tài khoản và để trống để giữ mật khẩu.';
-   initialized=true;$('save-button').disabled=false;}
- }catch(e){if(!initialized)message(e.message,true);$('wifi-status').textContent='Chưa đọc được trạng thái thiết bị';}
+   initialized=true;}
+  $('save-button').disabled=false;
+ }catch(e){statusError=true;message(e.message,true);$('save-button').disabled=true;$('wifi-status').textContent='Chưa đọc được trạng thái thiết bị';$('mqtt-status').textContent='Đang thử đọc lại cấu hình…';}
+ finally{refreshing=false;}
 }
 $('open-wifi').addEventListener('change',()=>{$('password').disabled=$('open-wifi').checked});
 $('ssid').addEventListener('input',()=>{if($('ssid').value!==savedSsid)$('wifi-help').textContent='Bạn đang đổi mạng. Hãy nhập mật khẩu mới hoặc chọn mạng không có mật khẩu.';});
 $('config-form').addEventListener('submit',async e=>{
  e.preventDefault();if(saving||!initialized)return;saving=true;$('save-button').disabled=true;
- try{const r=await fetch('/save',{method:'POST',body:new URLSearchParams(new FormData(e.target))});const c=await r.json();if(!r.ok)throw new Error(c.message||'Không lưu được cấu hình');message(c.message);$('save-button').textContent='Đã lưu cấu hình';}
+ try{const c=await requestJson('/save',{method:'POST',body:new URLSearchParams(new FormData(e.target))});message(c.message);$('save-button').textContent='Đã lưu cấu hình';}
  catch(e){saving=false;$('save-button').disabled=false;message(e.message,true);}
 });
 refresh();setInterval(refresh,3000);

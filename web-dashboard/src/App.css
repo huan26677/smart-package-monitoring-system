@@ -643,6 +643,8 @@
 .function-body .grid .card { padding: 16px; box-shadow: none; background: #f9fbfe; }
 .function-body .grid .card h2 { font-size: 14px; color: #596275; }
 .section-note { margin: 0 0 14px; color: #687386; font-size: 14px; line-height: 1.5; }
+.data-stale-note { margin: 0 0 16px; padding: 12px 14px; border: 1px solid #e2e7ef; border-radius: 8px; background: #f1f4f8; color: #596275; font-size: 14px; line-height: 1.6; }
+.function-body .telemetry-stale .card { background: #f1f4f8; }
 .telemetry-charts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 @media (max-width: 1100px) { .function-body .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) {

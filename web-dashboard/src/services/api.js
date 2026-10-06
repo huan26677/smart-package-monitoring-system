@@ -73,6 +73,14 @@ export function getDeviceDashboard(
   );
 }
 
+export async function getMqttHealth() {
+  const response = await fetch(`${API_BASE_URL}/api/health/mqtt`);
+  if (!response.ok && response.status !== 503) {
+    throw new Error("Không kiểm tra được kết nối MQTT của máy chủ.");
+  }
+  return response.json();
+}
+
 export function getTelemetry(
   deviceId,
   limit = 60

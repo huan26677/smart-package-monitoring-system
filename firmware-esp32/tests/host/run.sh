@@ -11,5 +11,8 @@ cc -std=c11 -Wall -Wextra -Werror -I tests/host/include -I main tests/host/mpu_f
 cc -std=c11 -Wall -Wextra -Werror -I main tests/host/network_config_test.c main/network_config.c -o /tmp/network-config-test
 /tmp/network-config-test
 
+cc -std=c11 -Wall -Wextra -Werror -I tests/host/include -I main tests/host/app_config_test.c main/app_config.c main/network_config.c -o /tmp/app-config-test
+/tmp/app-config-test
+
 cc -std=c11 -Wall -Wextra -Werror -Wno-unused-variable -I tests/host/network_stubs -I tests/host/include -I main tests/host/wifi_recovery_test.c main/network_config.c -o /tmp/wifi-recovery-test
 /tmp/wifi-recovery-test

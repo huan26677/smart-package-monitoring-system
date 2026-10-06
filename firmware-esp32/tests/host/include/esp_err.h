@@ -9,3 +9,5 @@ typedef int esp_err_t;
 
 #define ESP_ERR_INVALID_STATE 5
 #define ESP_ERR_INVALID_SIZE 6
+#define ESP_ERR_NVS_TYPE_MISMATCH 7
+#define ESP_ERR_NVS_INVALID_LENGTH 8

@@ -32,6 +32,7 @@ import {
   getDeviceDashboard,
   getEvents,
   getLocationScans,
+  getMqttHealth,
   getTelemetry,
   getWifiLocations,
   saveWifiLocation
@@ -41,12 +42,30 @@ const AUTO_REFRESH_MS =
   3000;
 
 function getAlertInfo(
-  dashboard
+  dashboard,
+  mqttHealth,
+  updateError
 ) {
 
   if (!dashboard) {
 
     return null;
+  }
+
+  if (mqttHealth?.status === "UNAVAILABLE") {
+    return {
+      className: "alert-offline",
+      title: "Máy chủ mất kết nối MQTT",
+      text: "Máy chủ chưa nhận được dữ liệu từ MQTT. Các chỉ số bên dưới được lưu từ lần nhận cuối; chưa xác định được trạng thái kiện hàng hiện tại."
+    };
+  }
+
+  if (updateError) {
+    return {
+      className: "alert-offline",
+      title: "Chưa cập nhật được dữ liệu",
+      text: "Kết nối đến máy chủ đang gián đoạn. Các chỉ số bên dưới là dữ liệu từ lần nhận cuối."
+    };
   }
 
   if (!dashboard.online) {
@@ -216,6 +235,7 @@ function App() {
     useState("");
 
   const [deviceListError, setDeviceListError] = useState("");
+  const [mqttHealth, setMqttHealth] = useState(null);
 
   const loadDevices =
     useCallback(
@@ -305,7 +325,8 @@ function App() {
             dashboardData,
             telemetryData,
             eventsData,
-            locationScansData
+            locationScansData,
+            mqttHealthData
           ] =
             await Promise.all([
 
@@ -326,12 +347,14 @@ function App() {
               getLocationScans(
                 deviceId,
                 50
-              )
+              ),
+              getMqttHealth().catch(() => null)
             ]);
 
           setDashboard(
             dashboardData
           );
+          setMqttHealth(mqttHealthData);
 
           setTelemetryHistory(
             telemetryData
@@ -589,9 +612,14 @@ function App() {
   const location =
     dashboard?.latestLocation;
 
+  const mqttUnavailable = mqttHealth?.status === "UNAVAILABLE";
+  const dataStale = !dashboard?.online || mqttUnavailable || Boolean(error);
+
   const alertInfo =
     getAlertInfo(
-      dashboard
+      dashboard,
+      mqttHealth,
+      error
     );
 
   return (
@@ -685,16 +713,16 @@ function App() {
 
               <span
                 className={
-                  dashboard.online
+                  !dataStale
                     ? "status online"
                     : "status offline"
                 }
               >
 
                 {
-                  dashboard.online
-                    ? "Đã kết nối"
-                    : "Mất kết nối"
+                  mqttUnavailable ? "Máy chủ mất kết nối"
+                    : error ? "Chưa cập nhật"
+                    : dashboard.online ? "Đã kết nối" : "Mất kết nối"
                 }
 
               </span>
@@ -762,10 +790,16 @@ function App() {
                   && <p className="section-note">Chưa có cảnh báo được ghi nhận.</p>}
               </CollapsibleSection>
 
-              <CollapsibleSection id="overview" title="Chỉ số hiện tại" defaultOpen
-                description="Thông số mới nhất từ ESP32"
-                badge={labelVi(telemetry?.state)} tone={telemetry?.state === "NORMAL" ? "safe" : "warning"}>
-              <div className="grid">
+              <CollapsibleSection id="overview" title={dataStale ? "Chỉ số lần nhận gần nhất" : "Chỉ số hiện tại"} defaultOpen
+                description={dataStale ? "Chưa có dữ liệu mới từ ESP32" : "Thông số mới nhất từ ESP32"}
+                badge={dataStale ? "Dữ liệu cũ" : labelVi(telemetry?.state)}
+                tone={dataStale ? "neutral" : telemetry?.state === "NORMAL" ? "safe" : "warning"}>
+              {dataStale && <p className="data-stale-note" role="status">
+                Đang hiển thị dữ liệu đã lưu
+                {telemetry?.receivedAt && <> lúc <time dateTime={telemetry.receivedAt}>{new Date(telemetry.receivedAt).toLocaleString("vi-VN")}</time></>}.
+                {" "}Chưa xác định được trạng thái kiện hàng hiện tại.
+              </p>}
+              <div className={`grid${dataStale ? " telemetry-stale" : ""}`}>
 
                 <section className="card">
 
@@ -785,7 +819,7 @@ function App() {
 
                   <div className="meta">
 
-                    Trạng thái:
+                    {dataStale ? "Trạng thái lần nhận cuối:" : "Trạng thái:"}
                     {" "}
                     {
                       labelVi(telemetry?.state)
@@ -910,7 +944,7 @@ function App() {
                 <section className="card">
 
                   <h2>
-                    Vị trí hiện tại
+                    {dataStale ? "Vị trí gần nhất" : "Vị trí hiện tại"}
                   </h2>
 
                   {

@@ -44,5 +44,19 @@ int main(void) {
     assert(e.timestamp==123 && e.duration_ms==0 && !e.synced && !e.measurement_version);
     assert(event_log_clear()==ESP_OK);assert(add()==ESP_OK);
     assert(event_log_get_first_unsynced(&e) && e.id==101);
+    event_record_t before=e;
+    fail_save=1;assert(event_log_advance_next_id(1239)==ESP_FAIL);
+    assert(event_log_next_id()==102 && event_log_get_first_unsynced(&e));
+    assert(!memcmp(&before,&e,sizeof(e)));
+    fail_save=0;assert(event_log_advance_next_id(1239)==ESP_OK);
+    assert(event_log_next_id()==1239 && event_log_unsynced_count()==1);
+    assert(event_log_get_first_unsynced(&e) && !memcmp(&before,&e,sizeof(e)));
+    assert(event_log_init()==ESP_OK && event_log_next_id()==1239);
+    assert(event_log_advance_next_id(10)==ESP_OK && event_log_next_id()==1239);
+    assert(event_log_advance_next_id(0)==ESP_ERR_INVALID_ARG);
+    assert(event_log_advance_next_id(UINT32_MAX)==ESP_ERR_INVALID_ARG);
+    assert(add()==ESP_OK && event_log_next_id()==1240);
+    assert(event_log_mark_synced(101)==ESP_OK);
+    assert(event_log_get_first_unsynced(&e) && e.id==1239);
     puts("PASS: overflow preserves pending events, failed writes remain pending, reboot recovery, V2 migration and monotonic IDs");
 }

@@ -15,6 +15,8 @@ Nếu dùng chính điện thoại đang cấu hình làm điểm phát sóng, c
 
 Trang cấu hình hiển thị trạng thái Wi-Fi và MQTT riêng: chờ Wi-Fi, đang kết nối, đã kết nối, lỗi tài khoản hoặc lỗi chứng chỉ máy chủ. Mật khẩu không được điền lại vào biểu mẫu hoặc trả trong JSON. Bấm lưu với cùng tên mạng/tài khoản và các ô mật khẩu trống giữ mật khẩu hiện có. Tên mạng tối đa 32 byte; mật khẩu WPA thường từ 8 đến 63 byte hoặc 64 chữ số hex. Các lỗi nhập, trường lặp và yêu cầu thiếu mã phiên bị từ chối trước khi lưu.
 
+Nếu cấu hình cũ thiếu trường hoặc sai kiểu/độ dài, trang sẽ hiện thông báo khôi phục cùng mã lỗi và vẫn cho nhập lại cấu hình. Trong trường hợp này, nhập lại cả mật khẩu Wi-Fi và MQTT; mật khẩu từ bản ghi chưa đầy đủ không được tự dùng lại. Nếu NVS không truy cập được, trang hiện lỗi cụ thể và tạm khóa nút lưu, tự thử đọc lại. Dữ liệu đang nhập được giữ khi thử lại; mã phiên được cập nhật khi ESP32 khởi động lại.
+
 ## Khi mất mạng
 
 Cảm biến, LCD, buzzer và ghi sự kiện vẫn hoạt động khi đang cấu hình hoặc mất mạng. Các sự kiện đã ghi vào NVS chờ kết nối lại; chỉ đánh dấu đồng bộ sau khi backend xác nhận lưu PostgreSQL. Bộ nhớ NVS giới hạn **128 sự kiện**, hàng đợi RAM giới hạn **32 bản ghi**; không bảo đảm lưu mọi sự kiện khi mất mạng kéo dài hoặc mất nguồn trước khi ghi flash. Toàn bộ dòng 200 mẫu dùng cho AI không được lưu ngoại tuyến.
@@ -28,11 +30,13 @@ ESP32 → Wi-Fi/điểm phát sóng → Internet → mqtt.huan2k5.id.vn:443
       → Cloudflare Tunnel → EMQX WebSocket /mqtt → backend → PostgreSQL
 ```
 
-Cloudflare public hostname `mqtt.huan2k5.id.vn` chuyển tiếp tới `http://emqx:8083` khi cloudflared chạy trong cùng mạng Compose. WSS dùng xác thực chứng chỉ và tài khoản MQTT riêng. Tên miền dashboard có lớp đăng nhập Cloudflare Access hiện có và đăng nhập ứng dụng; hostname MQTT phải cho phép thiết bị mở WebSocket bằng tài khoản MQTT mà không yêu cầu đăng nhập qua trình duyệt.
+Cloudflare public hostname `mqtt.huan2k5.id.vn` chuyển tiếp tới `http://emqx:8083` khi cloudflared chạy trong cùng mạng Compose. WSS dùng xác thực chứng chỉ và tài khoản MQTT riêng. Tên miền dashboard luôn yêu cầu đăng nhập ứng dụng; nếu có thêm Cloudflare Access, người dùng đăng nhập theo cấu hình đó. Hostname MQTT phải cho phép thiết bị mở WebSocket bằng tài khoản MQTT mà không yêu cầu đăng nhập qua trình duyệt. Khi chuyển cả máy chủ sang máy demo mới, làm theo [hướng dẫn sao lưu và chuyển máy](DEMO_MIGRATION.md).
 
 Máy chạy Docker phải có Internet, các dịch vụ EMQX/backend/PostgreSQL/cloudflared phải hoạt động. Tên miền không thay thế máy chủ; tắt máy chủ hoặc tunnel khiến thiết bị chưa gửi được dữ liệu. Cấu hình broker/tài khoản đang lưu trong volume EMQX, dữ liệu giám sát trong volume PostgreSQL.
 
 ## Kiểm tra sau khi đổi mạng
+
+Khi đã khôi phục database nhưng bộ đếm ID trên ESP32 thấp hơn lịch sử máy chủ, có thể bảo trì qua USB khi MQTT đang ngắt: `NETSTATUS` hiển thị `next`; `EVENTNEXT <MAX(event_id) của thiết bị trong database + 1>` nâng số tiếp theo và lưu NVS. Lệnh chỉ tăng bộ đếm, không sửa/xóa bản ghi đang chờ; nếu ghi thất bại, giữ số cũ. Không gửi lệnh này trong lúc MQTT đang kết nối. Đây là bảo trì ESP32 qua cổng COM, không liên quan BIOS máy tính.
 
 - Dashboard báo thiết bị đã kết nối, thời điểm nhận telemetry tiếp tục đổi.
 - `pendingEvents` giảm về 0 sau khi máy chủ xác nhận các sự kiện đang chờ. `rejectedEvents` là bộ đếm lịch sử các lần không lưu được, không tự về 0 khi đổi mạng.

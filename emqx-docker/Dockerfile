@@ -1,2 +1,2 @@
-FROM emqx/emqx:latest
-COPY emqx.yaml /opt/emqx/etc/emqx.yaml
+FROM emqx/emqx:6.3.1
+COPY base.hocon /opt/emqx/etc/base.hocon

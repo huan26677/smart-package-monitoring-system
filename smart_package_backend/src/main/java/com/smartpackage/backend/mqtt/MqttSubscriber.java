@@ -34,6 +34,8 @@ public class MqttSubscriber implements MqttCallbackExtended {
     private final MotionService motionService;
     private final String broker;
     private final String clientId;
+    private final String username;
+    private final String password;
     private final String[] topics;
     private final long retryIntervalMillis;
     private final ScheduledExecutorService connectionExecutor =
@@ -61,14 +63,21 @@ public class MqttSubscriber implements MqttCallbackExtended {
             @Value("${app.mqtt.topic.telemetry}") String telemetryTopic,
             @Value("${app.mqtt.topic.event}") String eventTopic,
             @Value("${app.mqtt.topic.location}") String locationTopic,
-            @Value("${app.mqtt.retry-interval-ms:5000}") long retryIntervalMillis) {
+            @Value("${app.mqtt.retry-interval-ms:5000}") long retryIntervalMillis,
+            @Value("${app.mqtt.username:}") String username,
+            @Value("${app.mqtt.password:}") String password) {
         if (retryIntervalMillis <= 0) {
             throw new IllegalArgumentException("MQTT retry interval must be positive");
+        }
+        if (username.isBlank() && !password.isEmpty()) {
+            throw new IllegalArgumentException("MQTT username is required when a password is configured");
         }
         this.mqttMessageService = mqttMessageService;
         this.motionService = motionService;
         this.broker = broker;
         this.clientId = clientId;
+        this.username = username;
+        this.password = password;
         this.topics = new String[] {telemetryTopic, eventTopic, locationTopic, "smart-package/+/motion-window"};
         this.retryIntervalMillis = retryIntervalMillis;
     }
@@ -95,6 +104,10 @@ public class MqttSubscriber implements MqttCallbackExtended {
                 options.setCleanSession(true);
                 options.setConnectionTimeout(10);
                 options.setKeepAliveInterval(30);
+                if (!username.isBlank()) {
+                    options.setUserName(username);
+                    options.setPassword(password.toCharArray());
+                }
                 logger.info("[MQTT] Connecting to: {}", broker);
                 client.connect(options);
             }

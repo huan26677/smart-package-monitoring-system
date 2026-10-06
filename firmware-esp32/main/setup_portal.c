@@ -42,6 +42,12 @@ static esp_err_t error(httpd_req_t *req,const char *message,const char *status) 
     cJSON *o=cJSON_CreateObject();if(o)cJSON_AddStringToObject(o,"message",message);
     return json_response(req,o,status);
 }
+static esp_err_t config_error(httpd_req_t *req,esp_err_t code) {
+    cJSON *o=cJSON_CreateObject();
+    if(o){cJSON_AddStringToObject(o,"message","Không truy cập được bộ nhớ cấu hình. Hãy khởi động lại ESP32; nếu vẫn lỗi, kiểm tra thiết bị qua USB.");
+        cJSON_AddStringToObject(o,"config_error",esp_err_to_name(code));}
+    return json_response(req,o,"500 Internal Server Error");
+}
 static esp_err_t root_handler(httpd_req_t *req) {
     httpd_resp_set_type(req,"text/html; charset=utf-8");
     httpd_resp_set_hdr(req,"Cache-Control","no-store");
@@ -50,11 +56,17 @@ static esp_err_t root_handler(httpd_req_t *req) {
 }
 static esp_err_t status_handler(httpd_req_t *req) {
     app_config_t config;
-    if(app_config_load(&config)!=ESP_OK) return error(req,"Không đọc được cấu hình đang lưu.","500 Internal Server Error");
+    esp_err_t stored_error,ret=app_config_load_for_setup(&config,&stored_error);
+    if(ret!=ESP_OK) return config_error(req,ret);
     cJSON *o=cJSON_CreateObject();if(!o)return ESP_ERR_NO_MEM;
     cJSON_AddStringToObject(o,"ssid",config.wifi_ssid);
     cJSON_AddStringToObject(o,"broker",config.mqtt_broker[0]?config.mqtt_broker:"wss://mqtt.huan2k5.id.vn/mqtt");
-    cJSON_AddStringToObject(o,"mqtt_user",config.configured?config.mqtt_username:"esp32-001");
+    cJSON_AddStringToObject(o,"mqtt_user",config.mqtt_username[0]?config.mqtt_username:(config.configured?"":"esp32-001"));
+    cJSON_AddBoolToObject(o,"config_recovery",stored_error!=ESP_OK);
+    if(stored_error!=ESP_OK) {
+        cJSON_AddStringToObject(o,"config_error",esp_err_to_name(stored_error));
+        cJSON_AddStringToObject(o,"config_warning","Cấu hình cũ thiếu hoặc sai định dạng. Hãy nhập lại mật khẩu Wi-Fi và MQTT rồi lưu; lịch sử sự kiện được giữ nguyên.");
+    }
     cJSON_AddBoolToObject(o,"has_wifi_password",config.wifi_password[0]!=0);
     cJSON_AddBoolToObject(o,"has_mqtt_password",config.mqtt_password[0]!=0);
     cJSON_AddBoolToObject(o,"wifi_connected",wifi_manager_is_connected());
@@ -76,7 +88,8 @@ static esp_err_t save_handler(httpd_req_t *req) {
         n+=r;
     }
     app_config_t config,old;
-    if(app_config_load(&old)!=ESP_OK){free(body);return error(req,"Không đọc được cấu hình đang lưu.","500 Internal Server Error");}
+    esp_err_t stored_error,read_ret=app_config_load_for_setup(&old,&stored_error);
+    if(read_ret!=ESP_OK){free(body);return config_error(req,read_ret);}
     config=old;
     char submitted_token[33],ssid[33],wifi_pass[65],uri[NETWORK_URI_MAX+1];
     char user[NETWORK_USER_MAX+1],secret[NETWORK_SECRET_MAX+1],open_wifi[2],clear_mqtt[2];
@@ -95,7 +108,7 @@ static esp_err_t save_handler(httpd_req_t *req) {
     strcpy(config.wifi_ssid,ssid);
     if(g==1 && !strcmp(open_wifi,"1")) config.wifi_password[0]=0;
     else if(wifi_pass[0]) strcpy(config.wifi_password,wifi_pass);
-    else if(strcmp(old.wifi_ssid,ssid)) return error(req,"Nhập mật khẩu mạng mới, hoặc chọn mạng Wi-Fi không có mật khẩu.","400 Bad Request");
+    else if(stored_error!=ESP_OK || strcmp(old.wifi_ssid,ssid)) return error(req,"Nhập mật khẩu mạng mới, hoặc chọn mạng Wi-Fi không có mật khẩu.","400 Bad Request");
     if(!network_wifi_password_valid(config.wifi_password)) return error(req,"Mật khẩu Wi-Fi cần 8–63 ký tự hoặc 64 chữ số hex.","400 Bad Request");
     if(d==1 && uri[0]) strcpy(config.mqtt_broker,uri);
     network_broker_t broker;
@@ -109,10 +122,12 @@ static esp_err_t save_handler(httpd_req_t *req) {
     }
     if(secret[0])strcpy(config.mqtt_password,secret);
     if(h==1 && !strcmp(clear_mqtt,"1")){config.mqtt_username[0]=0;config.mqtt_password[0]=0;}
+    if(stored_error!=ESP_OK && config.mqtt_username[0] && !config.mqtt_password[0])
+        return error(req,"Cấu hình cũ bị lỗi. Hãy nhập lại mật khẩu MQTT.","400 Bad Request");
     if(!config.mqtt_username[0] && config.mqtt_password[0]) return error(req,"Nhập tài khoản MQTT hoặc chọn máy chủ không dùng tài khoản.","400 Bad Request");
     config.configured=true;
     esp_err_t ret=app_config_save(&config);
-    if(ret!=ESP_OK) {ESP_LOGE(TAG,"Luu cau hinh that bai: %s",esp_err_to_name(ret));return error(req,"Không lưu được cấu hình. Hãy thử lại.","500 Internal Server Error");}
+    if(ret!=ESP_OK) {ESP_LOGE(TAG,"Luu cau hinh that bai: %s",esp_err_to_name(ret));return config_error(req,ret);}
     ESP_LOGI(TAG,"Da luu cau hinh mang; khoi dong lai, giu nguyen lich su su kien");
     ret=error(req,"Đã lưu. ESP32 đang khởi động lại để kết nối mạng mới. Bạn có thể rời SMART_PACKAGE_SETUP và mở lại dashboard. Nếu chưa kết nối sau 60 giây, mạng cấu hình sẽ tự xuất hiện.","200 OK");
     if(xTaskCreate(restart_task,"network_restart",2048,NULL,1,NULL)!=pdPASS)

@@ -90,6 +90,11 @@ static esp_err_t load_string(
         return ESP_ERR_NVS_NOT_FOUND;
     }
 
+    if (ret != ESP_OK) {
+        buffer[0] = '\0';
+        ESP_LOGW(TAG, "Khong doc duoc truong %s: %s", key, esp_err_to_name(ret));
+    }
+
 
     return ret;
 }
@@ -238,6 +243,46 @@ esp_err_t app_config_load(
     );
 
 
+    return ESP_OK;
+}
+
+static bool recoverable_config_error(esp_err_t error)
+{
+    return error == ESP_ERR_NVS_NOT_FOUND || error == ESP_ERR_NVS_TYPE_MISMATCH
+        || error == ESP_ERR_NVS_INVALID_LENGTH;
+}
+
+esp_err_t app_config_load_for_setup(app_config_t *config, esp_err_t *stored_error)
+{
+    if (!config || !stored_error) return ESP_ERR_INVALID_ARG;
+    *stored_error = app_config_load(config);
+    if (*stored_error == ESP_OK) return ESP_OK;
+    if (!recoverable_config_error(*stored_error)) return *stored_error;
+
+    memset(config, 0, sizeof(*config));
+    struct { const char *key; char *value; size_t capacity; } fields[] = {
+        {KEY_WIFI_SSID, config->wifi_ssid, sizeof(config->wifi_ssid)},
+        {KEY_WIFI_PASS, config->wifi_password, sizeof(config->wifi_password)},
+        {KEY_MQTT_BROKER, config->mqtt_broker, sizeof(config->mqtt_broker)},
+        {"mqtt_user", config->mqtt_username, sizeof(config->mqtt_username)},
+        {"mqtt_pass", config->mqtt_password, sizeof(config->mqtt_password)},
+    };
+    for (size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); i++) {
+        esp_err_t ret = load_string(fields[i].key, fields[i].value, fields[i].capacity);
+        if (ret != ESP_OK) {
+            fields[i].value[0] = '\0';
+            if (!recoverable_config_error(ret)) return ret;
+        }
+    }
+    network_broker_t broker;
+    if (network_parse_broker(config->mqtt_broker, &broker)) {
+        strcpy(config->mqtt_broker, broker.uri);
+        if (broker.has_credentials) strcpy(config->mqtt_username, broker.username);
+    } else config->mqtt_broker[0] = '\0';
+    /* A damaged record must not silently reuse a password from a partial write. */
+    config->wifi_password[0] = '\0';
+    config->mqtt_password[0] = '\0';
+    config->configured = false;
     return ESP_OK;
 }
 

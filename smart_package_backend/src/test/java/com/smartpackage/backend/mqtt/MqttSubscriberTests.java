@@ -2,6 +2,10 @@ package com.smartpackage.backend.mqtt;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -36,6 +40,8 @@ class MqttSubscriberTests {
                     doAnswer(call -> {
                         MqttConnectOptions options = call.getArgument(0);
                         assertFalse(options.isAutomaticReconnect());
+                        assertNull(options.getUserName());
+                        assertNull(options.getPassword());
                         if (attempts.incrementAndGet() == 1) {
                             throw new MqttException(MqttException.REASON_CODE_SERVER_CONNECT_ERROR);
                         }
@@ -58,19 +64,22 @@ class MqttSubscriberTests {
     }
 
     @Test
-    void reconnectsAndResubscribesAfterConnectionLoss() throws Exception {
+    void reconnectsWithCredentialsAndResubscribesAfterConnectionLoss() throws Exception {
         AtomicBoolean connected = new AtomicBoolean();
         AtomicInteger attempts = new AtomicInteger();
         try (MockedConstruction<MqttClient> clients = mockConstruction(MqttClient.class,
                 (client, context) -> {
                     when(client.isConnected()).thenAnswer(call -> connected.get());
                     doAnswer(call -> {
+                        MqttConnectOptions options = call.getArgument(0);
+                        assertEquals("backend-test", options.getUserName());
+                        assertArrayEquals("secret:$& with spaces".toCharArray(), options.getPassword());
                         attempts.incrementAndGet();
                         connected.set(true);
                         return null;
                     }).when(client).connect(any(MqttConnectOptions.class));
                 })) {
-            MqttSubscriber subscriber = subscriber();
+            MqttSubscriber subscriber = subscriber("backend-test", "secret:$& with spaces");
             try {
                 subscriber.start();
                 await(subscriber::isReady);
@@ -115,8 +124,17 @@ class MqttSubscriberTests {
     }
 
     private MqttSubscriber subscriber() {
+        return subscriber("", "");
+    }
+
+    @Test
+    void rejectsPasswordWithoutUsername() {
+        assertThrows(IllegalArgumentException.class, () -> subscriber("", "orphan-secret"));
+    }
+
+    private MqttSubscriber subscriber(String username, String password) {
         return new MqttSubscriber(mock(MqttMessageService.class), mock(com.smartpackage.backend.ai.MotionService.class), "tcp://localhost:1883",
-                "test-client", "test/+/telemetry", "test/+/event", "test/+/location-scan", 25);
+                "test-client", "test/+/telemetry", "test/+/event", "test/+/location-scan", 25, username, password);
     }
 
     private void await(BooleanSupplier condition) throws InterruptedException {

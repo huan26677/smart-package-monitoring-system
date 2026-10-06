@@ -43,6 +43,8 @@ EMQX chạy bằng Docker.
 Infrastructure:
 
 - EMQX MQTT broker
+- EMQX 6.3.1, cấu hình HOCON; xác thực trên TCP và WebSocket
+- Backend dùng tài khoản MQTT riêng từ `.env`, giữ thông tin xác thực khi kết nối lại
 - MQTT TCP port 1883
 - WebSocket port 8083
 - EMQX Dashboard port 18083
@@ -231,7 +233,8 @@ Technology:
 - Đăng nhập dashboard/API, cookie phiên HttpOnly, SameSite=Lax, CSRF cho thao tác ghi; thông tin tài khoản từ `.env`.
 - Tách giờ xảy ra và giờ nhận; bộ lọc loại/mức/thời gian, phân trang, thống kê toàn bộ kết quả lọc và xuất CSV.
 - Cảnh báo va đập/rơi được giữ đến khi người dùng xác nhận đã xem trong trình duyệt.
-- 16 unit test backend; kiểm thử C với dữ liệu cảm biến/NVS mô phỏng. Xem [TESTING.md](TESTING.md).
+- Dashboard phân biệt máy chủ mất kết nối MQTT và thiếu dữ liệu ESP32; chỉ số cũ hiển thị thời điểm nhận cuối và không dùng nhãn trạng thái hiện tại.
+- 29 unit test backend; kiểm thử C với dữ liệu cảm biến/NVS mô phỏng. Xem [TESTING.md](TESTING.md).
 
 ## Next Step
 

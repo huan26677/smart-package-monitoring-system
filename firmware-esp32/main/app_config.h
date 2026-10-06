@@ -46,6 +46,11 @@ esp_err_t app_config_load(
     app_config_t *config
 );
 
+/* Đọc riêng từng trường để có thể nhập lại cấu hình bị thiếu/sai định dạng.
+ * Không sửa NVS. stored_error ghi lỗi cấu hình cũ; lỗi truy cập NVS vẫn trả về.
+ */
+esp_err_t app_config_load_for_setup(app_config_t *config, esp_err_t *stored_error);
+
 
 /*
  * Luu config vao NVS.

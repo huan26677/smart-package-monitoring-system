@@ -1,6 +1,8 @@
 # Chạy hệ thống trên máy
 
-Yêu cầu: Docker Desktop đang chạy và file `.env` ở thư mục gốc đã có thông tin PostgreSQL cùng tài khoản dashboard. Xem các biến mẫu trong `.env.example`.
+Yêu cầu: Docker Desktop đang chạy và file `.env` ở thư mục gốc đã có thông tin PostgreSQL, tài khoản dashboard và tài khoản MQTT của backend. Xem các biến mẫu trong `.env.example`.
+
+**Máy mới chưa có dữ liệu/tài khoản EMQX:** làm theo [sao lưu và chuyển máy demo](DEMO_MIGRATION.md) trước. Lệnh chạy toàn bộ bên dưới dành cho máy đã khôi phục hoặc đã tạo đủ tài khoản MQTT; backend không thể healthy nếu người dùng MQTT chưa tồn tại trong broker.
 
 Từ thư mục gốc dự án:
 
@@ -18,6 +20,16 @@ Mật khẩu được băm BCrypt khi khởi động backend. Phiên đăng nh�
 Web và API được mở trên localhost và qua Cloudflare Tunnel. ESP32 có thể dùng `wss://mqtt.huan2k5.id.vn/mqtt` để kết nối qua Internet từ Wi-Fi 2,4 GHz hoặc điểm phát sóng điện thoại. Đổi Wi-Fi/MQTT trên trang cấu hình thiết bị, không cần sửa mã và nạp lại; xem [hướng dẫn mang thiết bị sang mạng khác](MOBILE_NETWORK.md). MQTT TCP cổng 1883 vẫn dùng được trong LAN nếu tài khoản và quyền topic phù hợp.
 
 Compose đợi EMQX sẵn sàng rồi mới chạy backend; đợi backend kết nối được PostgreSQL và đăng ký các topic MQTT rồi mới chạy web. Lần khởi động đầu có thể mất vài phút để build và khởi tạo dịch vụ.
+
+## Tài khoản MQTT của backend
+
+`MQTT_USERNAME` và `MQTT_PASSWORD` trong `.env` là tài khoản MQTT riêng của backend, khác tài khoản đăng nhập dashboard và tài khoản `esp32-001` của thiết bị. Tài khoản phải tồn tại trong cơ sở dữ liệu xác thực EMQX. Backend gửi thông tin này khi kết nối lần đầu và khi kết nối lại; mật khẩu không được ghi vào log hoặc mã nguồn. Docker Compose yêu cầu hai biến này để tránh khởi động backend bằng kết nối ẩn danh khi broker đã bật xác thực.
+
+Trên máy hiện tại đã tạo tài khoản MQTT `smart-package-backend`, không có quyền superuser, và lưu mật khẩu ngẫu nhiên trong `.env`. Khi cài mới: khởi động `emqx` và `postgres`, mở dashboard EMQX tại `http://localhost:18083`, tạo bộ xác thực Password-Based/Built-in Database nếu chưa có, rồi tạo người dùng backend với tài khoản/mật khẩu khớp `.env`. Cấp quyền đăng ký `smart-package/+/telemetry`, `smart-package/+/event`, `smart-package/+/location-scan`, `smart-package/+/motion-window`; quyền gửi `smart-package/+/event-ack`, `smart-package/+/motion-ack`, `smart-package/+/motion-control`. Tạo thêm người dùng MQTT `esp32-001` khớp thông tin đã lưu trên ESP32, với quyền gửi telemetry/event/location-scan/motion-window của chính thiết bị và nhận event-ack/motion-ack/motion-control. Tiếp đó khởi động backend và web. Chi tiết cài mới và khôi phục có trong [DEMO_MIGRATION.md](DEMO_MIGRATION.md).
+
+EMQX được cố định ở phiên bản 6.3.1, nạp mặc định từ `emqx-docker/base.hocon`. Cổng TCP 1883 và WebSocket 8083 đều bật xác thực. Các thay đổi và người dùng đang lưu trong volume EMQX vẫn được giữ. Không dùng tệp YAML làm cấu hình chạy cho phiên bản này; [tài liệu EMQX](https://docs.emqx.com/en/emqx/latest/guides/configuration/configuration.html) mô tả các tệp HOCON và thứ tự ghi đè cấu hình.
+
+Nếu log backend báo `Not authorized to connect`, kiểm tra tài khoản MQTT trong `.env` có khớp người dùng EMQX hay không. Sau khi đổi thông tin backend, chạy `docker compose up -d backend`. Nếu `/api/health/mqtt` trả 503 trong khi database vẫn OK, ESP32 có thể vẫn kết nối broker nhưng backend chưa nhận được dữ liệu. Dashboard hiển thị **Máy chủ mất kết nối MQTT** và đánh dấu các chỉ số từ lần nhận cuối là **Dữ liệu cũ**; khi máy chủ nhận dữ liệu lại, giao diện tự trở về trạng thái hiện tại.
 
 ## Kiểm tra tình trạng
 

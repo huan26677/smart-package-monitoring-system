@@ -50,4 +50,5 @@ Thumbs.db
 !.env.example
 *.local
 ai-training/__pycache__/
+Lenh/__pycache__/
 demo-private/

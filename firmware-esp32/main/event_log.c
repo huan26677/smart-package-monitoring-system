@@ -253,6 +253,25 @@ size_t event_log_rejected_count(void) {
     xSemaphoreGive(mutex);
     return count;
 }
+uint32_t event_log_next_id(void) {
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    uint32_t next = store.next_id;
+    xSemaphoreGive(mutex);
+    return next;
+}
+esp_err_t event_log_advance_next_id(uint32_t minimum) {
+    if (!minimum || minimum == UINT32_MAX) return ESP_ERR_INVALID_ARG;
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    uint32_t previous = store.next_id;
+    esp_err_t ret = ESP_OK;
+    if (minimum > previous && previous != 0) {
+        store.next_id = minimum;
+        ret = save();
+        if (ret != ESP_OK) store.next_id = previous;
+    } else if (!previous) ret = ESP_ERR_INVALID_STATE;
+    xSemaphoreGive(mutex);
+    return ret;
+}
 size_t event_log_unsynced_count(void) {
     xSemaphoreTake(mutex, portMAX_DELAY);
     size_t count = 0;
